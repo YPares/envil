@@ -1,0 +1,42 @@
+inputs:
+  nixpkgs: "github:NixOS/nixpkgs/nixpkgs-unstable"
+  nushellWith: "github:YPares/nushellWith"
+envs:
+  default:
+    includes:
+      - devops
+      - nushell
+  nix:
+    contents:
+      nixpkgs:
+        - nil
+        - nixfmt-classic
+        - cachix
+  devops:
+    includes:
+      - nix
+      - vcs
+    contents:
+      nixpkgs:
+        - kind
+        - kubectl
+        - kubernetes-helm
+        - jsonnet
+  nushell:
+    includes:
+      - vcs
+    contents:
+      nushellWith:
+        - nushellWithExtras
+      nixpkgs:
+        - jq
+  vcs:
+    contents:
+      nixpkgs:
+        - git
+        - jujutsu
+  vscode-bins:
+    includes:
+      - vcs
+      - nix
+      - nushell
