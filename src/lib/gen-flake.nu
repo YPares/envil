@@ -1,8 +1,8 @@
 use nix-printer.nu *
-use get-state.nu nixpkgs_input
+use statedir.nu nixpkgs_input
 
-def or-else [d] {
-    if $in == null {$d} else {$in}
+def or-else [defval] {
+    if $in == null {$defval} else {$in}
 }
 
 def gen-env [env_name env_desc]: nothing -> record<inputs: list<string>, output: string, includes: list<string>> {
