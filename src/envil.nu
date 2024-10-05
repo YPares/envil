@@ -22,15 +22,17 @@ def "main gen-flake" [
     gen-flake $envname $state $systems
 }
 
-# Start a subshell containing <envname>
+# Start a subshell containing <envname>, or run a command in a this subshell
 def "main shell" [
     envname: string = "default" # The environment to open in a subshell
-    --statedir (-d) = "" # Where to read the envil state from and write temporary flake.nix
+    --statedir (-d) = "" # Where to read the envil state from and write the temporary flake.nix
+    ...cmd # The command to run and its args
 ] {
     let state = get-state $statedir
     gen-flake $envname $state | save -rf $"($state.statedir)/flake.nix"
     print $"(ansi grey)Starting a subshell with env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
-    SHELL_ENV=$envname ^nix shell $"(path_to_url $state.statedir)#($envname)"
+    let args = if ($cmd | is-empty) {[]} else {["-c"] | append $cmd}
+    SHELL_ENV=$envname ^nix shell $"(path_to_url $state.statedir)#($envname)" ...$args
 }
 
 # List the available envs
@@ -62,7 +64,7 @@ def "main set-statedir" [
 # Apply the selected environment, ie. switch the bins in `<statedir>/current/bin' to those of <envname>
 def "main switch" [
     envname: string = "default" # The environment to switch to
-    --statedir (-d) = "" # Where to read the envil state from and write temporary flake.nix
+    --statedir (-d) = "" # Where to read the envil state from and write the temporary flake.nix
 ] {
     let state = get-state $statedir
     gen-flake $envname $state | save -rf $"($state.statedir)/flake.nix"
