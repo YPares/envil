@@ -18,8 +18,8 @@ This is a tool to:
 - switch to a specific environment (add the tools that an env contains to your `PATH` and remove those of the previously activated env),
 - start a subshell with a specific env activated.
 
-It aims at providing people who are not regular Nix users a quick and simple way to start with custom, isolated & reproducible environments,
-one of the major reasons to use Nix.
+It aims at providing people who are not regular Nix users a quick and simple way to start with custom,
+isolated & reproducible environments, one of the major reasons to use Nix.
 
 In its current state, `envil` aims at being an alternative to the `nix profile` command, which doesn't support
 multiple profiles and contributes to cluttering your PATH. `envil` enables you and incites you to be selective and to
@@ -45,11 +45,16 @@ PATH="$HOME/.envil/current/bin:$PATH"
 
 and then log out and log back in.
 
-By default, `envil` will read/write its state in `$HOME/.envil`. Run `envil -h` to see all the commands available.
-For instance, if you clone that repo and `cd` into your local clone, you can run the following:
+By default, `envil` will read/write its configuration in `$HOME/.envil`.
+This is what `envil` calls a "statedir", ie. a directory that contains (1) a certain configuration representing the
+desired state of several environments, and (2) the Nix flakes it generated for those environments.
 
-- `envil envs -d examples/statedir`: list all the envs defined in the example statedir
-- `envil shell devops -d examples/statedir`: open a subshell, with the tools from the `devops` env put in your `PATH`
+Run `envil -h` to see all the commands available. For instance, if you clone that repo and `cd` into your local clone,
+you can run the following:
+
+- `envil envs-config -d examples/statedir`: list all the envs defined in the example statedir
+- `envil shell -d examples/statedir`: show a dropdown list of all envs in the example statedir to let you select one.
+  Then open a subshell, where the tools from the selected env are in your `PATH`
 
 Subshells export the `$SHELL_ENV` env var. You can use it in your shell prompt (eg. `PS1` for bash) so it shows
 which env is activated in the subshell. For instance if you use bash, add the following to your `.bashrc`:

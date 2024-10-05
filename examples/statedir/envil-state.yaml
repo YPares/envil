@@ -2,10 +2,6 @@ inputs:
   nixpkgs: "github:NixOS/nixpkgs/nixpkgs-unstable"
   nushellWith: "github:YPares/nushellWith"
 envs:
-  default:
-    extends:
-      - devops
-      - nushell
   nix:
     contents:
       nixpkgs:

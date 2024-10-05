@@ -16,13 +16,13 @@ export def get-state [statedir]: nothing -> record {
         # print $"No envil state file found. Generating ($statefile)"
         let defstate = {
             inputs: $nixpkgs_input
-            envs: {default: {}}
+            envs: {basic: {}}
         }
         $defstate | save $statefile
         $defstate
     } | insert statedir $statedir
 }
 
-export def set-state [statedir] {
+export def set-statedir [statedir] {
     $statedir | path expand | save -f $"($env.HOME)/.envil/current-state.txt"
 }

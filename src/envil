@@ -12,11 +12,15 @@ def main [] {
 }
 
 def select-envname [state envname] {
-    if $envname == "" {
-        $state.envs | columns | input list "Select which env to use:"
+    let envname = if $envname == "" {
+        $state.envs | columns | input list -f "Select which env to use:"
     } else {
         $envname
     }
+    if $envname in ["default"] {
+        error make {msg: $"`($envname)' is a reserved name, please rename the environment"}
+    }
+    $envname
 }
 
 # Print out the flake that will generate the <envname> environment
@@ -42,24 +46,15 @@ def "main shell" [
     gen-flake $envname $state | save -rf $"($state.statedir)/flake.nix"
     print $"(ansi grey)Starting a subshell with env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
     let args = if ($cmd | is-empty) {[]} else {["-c"] | append $cmd}
-    SHELL_ENV=$envname ^nix shell $"(path_to_url $state.statedir)#($envname)" ...$args
-}
-
-# List the available envs
-def "main envs" [
-    --statedir (-d) = "" # Where to read the envil state from
-] {
-    let state = get-state $statedir
-    print $"(ansi grey)Envs defined in statedir (ansi yellow)`($state.statedir)'(ansi grey):(ansi reset)"
-    $state.envs | columns
+    SHELL_ENV=$envname ^nix shell $"(path_to_url $state.statedir)" ...$args
 }
 
 # Print the current config of each env
-def "main state" [
+def "main envs-config" [
     --statedir (-d) = "" # Where to read the envil state from
 ] {
     let state = get-state $statedir
-    print $"(ansi grey)Current state dir is (ansi yellow)`($state.statedir)'(ansi grey):\n"
+    print $"(ansi grey)Current statedir is (ansi yellow)`($state.statedir)'(ansi grey):\n"
     print $"(ansi green)($state | reject statedir | to yaml)(ansi reset)"
 }
 
@@ -67,7 +62,7 @@ def "main state" [
 def "main set-statedir" [
     statedir # A directory meant to contain an `envil-state.yaml' file
 ] {
-    set-state $statedir
+    set-statedir $statedir
     print $"(ansi grey)Default state dir set to (ansi yellow)`($statedir)'(ansi reset)"
 }
 
@@ -80,5 +75,6 @@ def "main switch" [
     let envname = select-envname $state $envname
     gen-flake $envname $state | save -rf $"($state.statedir)/flake.nix"
     print $"(ansi grey)Building env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
-    ^nix build $"(path_to_url $state.statedir)#($envname)" -o $"($state.statedir)/current"
+    ^nix build $"(path_to_url $state.statedir)" -o $"($state.statedir)/current"
+    print $"(ansi grey)Switched to env (ansi yellow)`($envname)'(ansi reset)"
 }

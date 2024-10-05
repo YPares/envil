@@ -50,7 +50,7 @@ def output-flake [env_name systems inputs outputs] {
                          buildEnv (r (c "A function to make an environment")
                                      "imp.nixpkgs.buildEnv")
                          envs (r (c $"Each environment used by env `($env_name)'")
-                                 (rec2a $outputs))]
+                                 (rec2a ({default: $"envs.($env_name)"} | merge $outputs)))]
                         envs)))))))) |
     ^nix run "nixpkgs#nixfmt-classic"
 }
