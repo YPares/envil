@@ -38,12 +38,12 @@ def "main envs" [
     --statedir (-d) = "" # Where to read the envil state from
 ] {
     let state = get-state $statedir
-    print $"(ansi grey)Envs defined in state (ansi yellow)`($state.statedir)'(ansi grey):(ansi reset)"
+    print $"(ansi grey)Envs defined in statedir (ansi yellow)`($state.statedir)'(ansi grey):(ansi reset)"
     $state.envs | columns
 }
 
 # Print the current config of each env
-def "main get-state" [
+def "main state" [
     --statedir (-d) = "" # Where to read the envil state from
 ] {
     let state = get-state $statedir
@@ -51,8 +51,8 @@ def "main get-state" [
     print $"(ansi green)($state | reject statedir | to yaml)(ansi reset)"
 }
 
-# Changes the default envil state dir to <statedir>
-def "main set-state" [
+# Set the default envil statedir to <statedir>
+def "main set-statedir" [
     statedir # A directory meant to contain an `envil-state.yaml' file
 ] {
     set-state $statedir

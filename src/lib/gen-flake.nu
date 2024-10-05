@@ -72,7 +72,7 @@ export def main [
         let cur_env = try {
             $state.envs | get $cur_name
         } catch {
-            error make {msg: $"Env `($cur_name)' does not exist"}
+            error make {msg: $"Env `($cur_name)' does not exist in statedir `($state.statedir)'"}
         }
         mut cur_done = gen-env $cur_name $cur_env
         let extends = $cur_done.extends
