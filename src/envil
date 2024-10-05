@@ -11,24 +11,34 @@ def main [] {
     help main
 }
 
+def select-envname [state envname] {
+    if $envname == "" {
+        $state.envs | columns | input list "Select which env to use:"
+    } else {
+        $envname
+    }
+}
+
 # Print out the flake that will generate the <envname> environment
 def "main gen-flake" [
-    envname = "default" # The name of the env to generate a flake for
+    envname = "" # The name of the env to generate a flake for
     --statedir (-d) = "" # Where to read the envil state from
     --systems (-s): list<string> = []
     # Which systems should this flake build for. The flake will use `nixpkgs.lib.systems.flakeExposed' if <systems> is left empty
 ] {
     let state = get-state $statedir
+    let envname = select-envname $state $envname
     gen-flake $envname $state $systems
 }
 
 # Start a subshell containing <envname>, or run a command in a this subshell
 def "main shell" [
-    envname: string = "default" # The environment to open in a subshell
+    envname: string = "" # The environment to open in a subshell
     --statedir (-d) = "" # Where to read the envil state from and write the temporary flake.nix
     ...cmd # The command to run and its args
 ] {
     let state = get-state $statedir
+    let envname = select-envname $state $envname
     gen-flake $envname $state | save -rf $"($state.statedir)/flake.nix"
     print $"(ansi grey)Starting a subshell with env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
     let args = if ($cmd | is-empty) {[]} else {["-c"] | append $cmd}
@@ -63,10 +73,11 @@ def "main set-statedir" [
 
 # Apply the selected environment, ie. switch the bins in `<statedir>/current/bin' to those of <envname>
 def "main switch" [
-    envname: string = "default" # The environment to switch to
+    envname: string = "" # The environment to switch to
     --statedir (-d) = "" # Where to read the envil state from and write the temporary flake.nix
 ] {
     let state = get-state $statedir
+    let envname = select-envname $state $envname
     gen-flake $envname $state | save -rf $"($state.statedir)/flake.nix"
     print $"(ansi grey)Building env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
     ^nix build $"(path_to_url $state.statedir)#($envname)" -o $"($state.statedir)/current"

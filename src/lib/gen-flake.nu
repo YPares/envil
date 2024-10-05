@@ -86,7 +86,7 @@ export def main [
         $already_done = $already_done | upsert $cur_name true
     }
     
-    let actual_systems = if ($systems | is-empty) {
+    let systems = if ($systems | is-empty) {
         "inputs.nixpkgs.lib.systems.flakeExposed"
     } else {
         (l ...($systems | each {s $in}))
@@ -105,5 +105,5 @@ export def main [
 
     let $outputs = $envs_table | each {[$in.name $in.output]} | into record
 
-    output-flake $env_name $actual_systems $inputs $outputs
+    output-flake $env_name $systems $inputs $outputs
 }

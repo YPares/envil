@@ -1,15 +1,15 @@
 export const nixpkgs_input = {nixpkgs: "github:NixOS/nixpkgs/nixpkgs-unstable"}
 
 export def get-state [statedir]: nothing -> record {
-    let actual_statedir = if $statedir == "" {
+    let statedir = if $statedir == "" {
         try {
             open $"($env.HOME)/.envil/current-state.txt"
         } catch {
             $"($env.HOME)/.envil"
         }
     } else {$statedir}
-    mkdir $actual_statedir
-    let statefile = $"($actual_statedir)/envil-state.yaml"
+    mkdir $statedir
+    let statefile = $"($statedir)/envil-state.yaml"
     try {
         open $statefile
     } catch {
@@ -20,7 +20,7 @@ export def get-state [statedir]: nothing -> record {
         }
         $defstate | save $statefile
         $defstate
-    } | insert statedir $actual_statedir
+    } | insert statedir $statedir
 }
 
 export def set-state [statedir] {
