@@ -72,13 +72,16 @@ PS1="${shell_env_bit}...the rest of your prompt..."
 ## Related tools & philosophy
 
 `envil` is related to [`devenv`](https://devenv.sh/), [`devbox`](https://www.jetify.com/docs/devbox/),
-[`flox`](https://flox.dev/) and [`home-manager`](https://github.com/nix-community/home-manager)
-but with a focus on:
+[`flox`](https://flox.dev/), [`flakey-profile`](https://github.com/lf-/flakey-profile) and
+[`home-manager`](https://github.com/nix-community/home-manager) but with a focus on:
 
-- simplicity and usability by people who do not write or write little Nix code
-- integration on top of a regular Nix installation (`envil` will not manage Nix installation for you,
-  there are better tools to do that, such as the Determinate Systems Nix installer linked above)
-- reusable environments, meaning that any env can extend (or import, include, whatever you prefer) other envs
+- simplicity and usability by people who do not write or write little Nix code;
+- compatibility with existing Nix tools, and no disruption of your regular Nix installation:
+  `envil` will not manage Nix installation for you,
+  there are better tools to do that, such as the Determinate Systems Nix installer linked above. Likewise, `envil`
+  will not manage your nix profile like `flakey-profile` does. It operates on the side so you can keep using
+  `nix-env` or `nix profile` as usual;
+- reusable environments, meaning that any env can extend (or import, include, whatever you prefer) other envs;
 - production of regular and (almost) idiomatic Nix flakes that do not require `--impure`
 
 Also, `envil` strongly encourages decomposition. If you write Nix code, then writing small & local Nix flakes to

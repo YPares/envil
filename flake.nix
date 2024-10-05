@@ -18,7 +18,7 @@
           default = envil;
 
           envil = imp.nixpkgs.writeShellScriptBin "envil" ''
-            ${imp.nixpkgs.nushell}/bin/nu -n "${./src}/envil.nu" "$@"
+            ${imp.nixpkgs.nushell}/bin/nu -n "${./src}/envil" "$@"
           '';
         });
     };
