@@ -5,7 +5,7 @@ def or-else [defval] {
     if $in == null {$defval} else {$in}
 }
 
-def gen-env [env_name env_desc]: nothing -> record<inputs: list<string>, output: string, includes: list<string>> {
+def gen-env [env_name env_desc]: nothing -> record<inputs: list<string>, output: string, extends: list<string>> {
     mut env_inputs = []
     mut env_paths = []
     for i in ($env_desc.contents? | transpose name pkgs) {
@@ -14,7 +14,7 @@ def gen-env [env_name env_desc]: nothing -> record<inputs: list<string>, output:
             $env_paths = $env_paths | append $"imp.($i.name).($p)"
         }
     }
-    for i in $env_desc.includes? {
+    for i in $env_desc.extends? {
         $env_paths = $env_paths | append $"envs.($i)"
     }
     let output = (r
@@ -26,7 +26,7 @@ def gen-env [env_name env_desc]: nothing -> record<inputs: list<string>, output:
     {
         inputs: $env_inputs
         output: $output
-        includes: ($env_desc.includes? | or-else [])
+        extends: ($env_desc.extends? | or-else [])
     }
 }
 
@@ -61,7 +61,8 @@ export def main [
     state
     systems: list<string> = []
 ] {
-    # We do a BFS through the existing envs to resolve their inclusions:
+    # We do a BFS through the existing envs to resolve the `extends',
+    # and recursively generate a buildEnv target for each extended env:
     mut to_do = [$env_name]
     mut already_done = {}
     mut generated_envs = {}
@@ -74,10 +75,10 @@ export def main [
             error make {msg: $"Env `($cur_name)' does not exist"}
         }
         mut cur_done = gen-env $cur_name $cur_env
-        let includes = $cur_done.includes
-        $cur_done = $cur_done | reject includes
+        let extends = $cur_done.extends
+        $cur_done = $cur_done | reject extends
         $generated_envs = $generated_envs | insert $cur_name $cur_done
-        for i in $includes {
+        for i in $extends {
             if (not ($i in $already_done) and not ($i in $to_do)) {
                 $to_do = $to_do | append $i
             }

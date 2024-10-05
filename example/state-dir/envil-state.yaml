@@ -3,7 +3,7 @@ inputs:
   nushellWith: "github:YPares/nushellWith"
 envs:
   default:
-    includes:
+    extends:
       - devops
       - nushell
   nix:
@@ -13,7 +13,7 @@ envs:
         - nixfmt-classic
         - cachix
   devops:
-    includes:
+    extends:
       - nix
       - vcs
     contents:
@@ -23,7 +23,7 @@ envs:
         - kubernetes-helm
         - jsonnet
   nushell:
-    includes:
+    extends:
       - vcs
     contents:
       nushellWith:
@@ -36,7 +36,7 @@ envs:
         - git
         - jujutsu
   vscode-bins:
-    includes:
+    extends:
       - vcs
       - nix
       - nushell
