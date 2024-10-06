@@ -5,7 +5,7 @@ def or-else [defval] {
     if $in == null {$defval} else {$in}
 }
 
-def gen-env [env_name env_desc]: nothing -> record<inputs: list<string>, output: string, extends: list<string>> {
+def gen-one-env [env_name env_desc]: nothing -> record<inputs: list<string>, output: string, extends: list<string>> {
     mut env_inputs = []
     mut env_paths = []
     for i in ($env_desc.contents? | transpose name pkgs) {
@@ -74,7 +74,7 @@ export def generate-flake [
         } catch {
             error make {msg: $"Env `($cur_name)' does not exist in statedir `($state.statedir)'"}
         }
-        mut cur_done = gen-env $cur_name $cur_env
+        mut cur_done = gen-one-env $cur_name $cur_env
         let extends = $cur_done.extends
         $cur_done = $cur_done | reject extends
         $generated_envs = $generated_envs | insert $cur_name $cur_done
@@ -97,7 +97,17 @@ export def generate-flake [
 
     mut inputs = {}
     for i in ($envs_table | each {$in.inputs} | flatten | uniq) {
-        $inputs = $inputs | insert $"($i).url" ($state.inputs | get $i)
+        mut input_url = $state.inputs | get $i
+        if (($input_url | describe) | str starts-with "record") {
+            # $input_url is a record `{"<url>": [followed_input0, followed_input1, ...]}'
+            let actual_url = $input_url | columns | get 0
+            for follow_link in ($input_url | values | transpose src dest) {
+                $inputs = $inputs | insert $"($i).inputs.($follow_link.src).follows" (s $follow_link.dest)
+            }
+            $input_url = $actual_url
+        }
+        # else $input_url is already just an URL string
+        $inputs = $inputs | insert $"($i).url" $input_url
     }
     if (not ("nixpkgs.url" in $inputs)) {
         $inputs = $inputs | insert "nixpkgs.url" $nixpkgs_input.nixpkgs

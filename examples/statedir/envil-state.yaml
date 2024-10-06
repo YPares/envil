@@ -1,10 +1,16 @@
 inputs:
-  nixpkgs: "github:NixOS/nixpkgs/nixpkgs-unstable"
-  nushellWith: "github:YPares/nushellWith"
+  pkgs:
+    "github:NixOS/nixpkgs/nixpkgs-unstable"
+  nushellWith:
+    "github:YPares/nushellWith":
+      nixpkgs: pkgs
+      # Means that the 'nushellWith' input has itself a 'nixpkgs' input,
+      # that we ask to follow our own 'pkgs' input declared just above,
+      # instead of using its own locked version
 envs:
   nix:
     contents:
-      nixpkgs:
+      pkgs:
         - nil
         - nixfmt-classic
         - cachix
@@ -13,7 +19,7 @@ envs:
       - nix
       - vcs
     contents:
-      nixpkgs:
+      pkgs:
         - kind
         - kubectl
         - kubernetes-helm
@@ -24,11 +30,11 @@ envs:
     contents:
       nushellWith:
         - nushellWithExtras
-      nixpkgs:
+      pkgs:
         - jq
   vcs:
     contents:
-      nixpkgs:
+      pkgs:
         - git
         - jujutsu
   vscode-bins:
