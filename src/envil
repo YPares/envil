@@ -1,11 +1,7 @@
 #!/usr/bin/env nu
 
-use lib/gen-flake.nu
+use lib/gen-flake.nu *
 use lib/statedir.nu *
-
-def path_to_url [path: path] {
-    $"path:($path | path expand)"
-}
 
 def main [] {
     help main
@@ -32,10 +28,16 @@ def "main gen-flake" [
 ] {
     let state = get-state $statedir
     let envname = select-envname $state $envname
-    gen-flake $envname $state $systems
+    generate-flake $envname $state $systems
 }
 
-# Start a subshell containing <envname>, or run a command in a this subshell
+def write-flake [envname state] {
+    let flakepath = [$state.statedir env-flakes $envname] | path join | path expand
+    generate-flake $envname $state | save -rf ([$flakepath flake.nix] | path join)
+    $"path:($flakepath)"
+}
+
+# Start a subshell containing <envname>, or run a command in this subshell
 def "main shell" [
     envname: string = "" # The environment to open in a subshell
     --statedir (-d) = "" # Where to read the envil state from and write the temporary flake.nix
@@ -43,10 +45,10 @@ def "main shell" [
 ] {
     let state = get-state $statedir
     let envname = select-envname $state $envname
-    gen-flake $envname $state | save -rf $"($state.statedir)/flake.nix"
+    let flakepath = write-flake $envname $state
     print $"(ansi grey)Starting a subshell with env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
     let args = if ($cmd | is-empty) {[]} else {["-c"] | append $cmd}
-    SHELL_ENV=$envname ^nix shell $"(path_to_url $state.statedir)" ...$args
+    SHELL_ENV=$envname ^nix shell $flakepath ...$args
 }
 
 # Print the current config of each env
@@ -60,7 +62,7 @@ def "main envs-config" [
 
 # Set the default envil statedir to <statedir>
 def "main set-statedir" [
-    statedir # A directory meant to contain an `envil-state.yaml' file
+    statedir # A directory meant to contain an `envil-state.yaml' file and flakes generated from it
 ] {
     set-statedir $statedir
     print $"(ansi grey)Default state dir set to (ansi yellow)`($statedir)'(ansi reset)"
@@ -73,8 +75,8 @@ def "main switch" [
 ] {
     let state = get-state $statedir
     let envname = select-envname $state $envname
-    gen-flake $envname $state | save -rf $"($state.statedir)/flake.nix"
+    let flakepath = write-flake $envname $state
     print $"(ansi grey)Building env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
-    ^nix build $"(path_to_url $state.statedir)" -o $"($state.statedir)/current"
+    ^nix build $flakepath -o $"($state.statedir)/current"
     print $"(ansi grey)Switched to env (ansi yellow)`($envname)'(ansi reset)"
 }

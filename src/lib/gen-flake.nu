@@ -56,7 +56,7 @@ def output-flake [env_name systems inputs outputs] {
 }
 
 # Prints out the flake that will generate the <env-name> environment
-export def main [
+export def generate-flake [
     env_name
     state
     systems: list<string> = []
