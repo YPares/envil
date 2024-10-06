@@ -61,7 +61,7 @@ Run `envil -h` to see all the commands available. For instance, if you clone tha
 you can run the following:
 
 - `envil info -d examples/statedir`: list all the envs defined in the example statedir
-- `envil shell -d examples/statedir`: show a dropdown list of all envs in the example statedir to let you select one.
+- `envil shell -d examples/statedir`: show a list of all envs in the example statedir and let you select one.
   Then open a subshell, where the tools from the selected env are in your `PATH`
 - `envil update some-env`: reads your own `~/.envil` statedir (the default without a `-d`), tries to find an env
   named "`some-env`" and updates its flake.lock file. You can then rerun `envil shell` or `envil switch` to get
@@ -82,14 +82,7 @@ PS1="${shell_env_bit}...the rest of your prompt..."
 
 ## Updating `envil`
 
-Do `nix profile upgrade envil`.
-
-If this does nothing (as mentioned above, `nix profile` isn't that great), do:
-
-```sh
-nix profile remove envil
-nix profile install github:YPares/envil#envil
-```
+Do `nix profile upgrade envil --refresh`.
 
 ## Roadmap
 
