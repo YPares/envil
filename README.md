@@ -10,21 +10,29 @@
      |_____/
 ```
 
-**envil** forges Nix flakes so you don't have to.
+**envil** forges Nix flakes.
 
 This is a tool to:
 
-- generate Nix flakes from a simple yaml description of a set of environments (see for instance [here](./examples/statedir/envil-state.yaml)),
+- generate simple Nix flakes from a simple yaml description of a set of environments (see for instance [here](./examples/statedir/envil-state.yaml)),
 - switch to a specific environment (add the tools that an env contains to your `PATH` and remove those of the previously activated env),
 - start a subshell with a specific env activated.
 
 It aims at providing people who are not regular Nix users a quick and simple way to start with custom,
 isolated & reproducible environments, one of the major reasons to use Nix.
 
-In its current state, `envil` aims at being an alternative to the `nix profile` command, which doesn't support
+This is **not** a tool to:
+
+- install and manage Nix for you,
+- write complicated Nix logic for you
+
+`envil` strongly believes in the K.I.S.S. principle. And it's not just meant for Nix beginners: if you already know Nix,
+you may have still a use for it, as a small "top-level" flake manager, to be able to quickly switch between environments and/or
+tools you would already have defined as flake files.
+That is because in its current state, `envil` aims at being an alternative to the `nix profile` command, which doesn't support
 multiple profiles and contributes to cluttering your PATH. `envil` enables you and incites you to be selective and to
 quickly switch between environments or start shells to avoid situations where you end up with two different versions
-of the same tool in your `PATH`, or two different `python` exes but each one configured with different libraries,
+of the same tool in your `PATH`, or things like two different `python` installations but each one configured with its own libraries,
 leaving you unable to select which one you want.
 
 ## Setup
