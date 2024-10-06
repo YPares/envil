@@ -1,24 +1,33 @@
-inputs:
-  pkgs:
+## This is an example of how to define an envil set of environments,
+## each one with its set of packages (tools)
+
+inputs: # 'inputs' are "package sources" in nix flakes parlance
+  pkgs: # Here we just give a name to an input
     "github:NixOS/nixpkgs/nixpkgs-unstable"
+    # ^^ Here we tell envil & Nix where to fetch it. This is a nix flake URL
   nushellWith:
-    "github:YPares/nushellWith":
+    "github:YPares/nushellWith": # A flake URL like above, but with some extra config
       nixpkgs: pkgs
-      # Means that the 'nushellWith' input has itself a 'nixpkgs' input,
+      # ^^ This is a "follows" link. It means that the 'nushellWith' input
+      # has itself a 'nixpkgs' input,
       # that we ask to follow our own 'pkgs' input declared just above,
       # instead of using its own locked version
 envs:
-  nix:
-    contents:
-      pkgs:
-        - nil
+  nix: # This declares and environment, and names it (you can use any name
+       # except 'default', which is reserved)
+    contents: # Which packages should be provided by the environment,
+              # when activated
+      pkgs: # A package source (from 'inputs')
+        - nil  # Which packages to use from that source
         - nixfmt-classic
         - cachix
   devops:
-    extends:
+    extends: # This is how an environment "inherits" from others, so you
+             # don't have to repeat yourself
       - nix
       - vcs
-    contents:
+    contents: # ...and from that point, you know everything you need :)
+              # Thanks for trying envil!
       pkgs:
         - kind
         - kubectl

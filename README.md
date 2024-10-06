@@ -55,6 +55,9 @@ you can run the following:
 - `envil envs-config -d examples/statedir`: list all the envs defined in the example statedir
 - `envil shell -d examples/statedir`: show a dropdown list of all envs in the example statedir to let you select one.
   Then open a subshell, where the tools from the selected env are in your `PATH`
+- `envil update some-env`: reads your own `~/.envil` statedir (the default without a `-d`), tries to find an env
+  named "`some-env`" and updates its flake.lock file. You can then rerun `envil shell` or `envil switch` to get
+  the updated packages
 
 Subshells export the `$SHELL_ENV` env var. You can use it in your shell prompt (eg. `PS1` for bash) so it shows
 which env is activated in the subshell. For instance if you use bash, add the following to your `.bashrc`:

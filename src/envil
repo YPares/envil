@@ -7,7 +7,7 @@ def main [] {
     help main
 }
 
-def select-envname [state envname] {
+def select-envname [envname state] {
     let envname = if $envname == "" {
         $state.envs | columns | input list -f "Select which env to use:"
     } else {
@@ -27,7 +27,7 @@ def "main gen-flake" [
     # Which systems should this flake build for. The flake will use `nixpkgs.lib.systems.flakeExposed' if <systems> is left empty
 ] {
     let state = get-state $statedir
-    let envname = select-envname $state $envname
+    let envname = select-envname $envname $state
     generate-flake $envname $state $systems
 }
 
@@ -45,7 +45,7 @@ def "main shell" [
     ...cmd # The command to run and its args
 ] {
     let state = get-state $statedir
-    let envname = select-envname $state $envname
+    let envname = select-envname $envname $state
     let flakepath = write-flake $envname $state
     print $"(ansi grey)Starting a subshell with env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
     let args = if ($cmd | is-empty) {[]} else {["-c"] | append $cmd}
@@ -75,9 +75,22 @@ def "main switch" [
     --statedir (-d) = "" # Where to read the envil state from and write the temporary flake.nix
 ] {
     let state = get-state $statedir
-    let envname = select-envname $state $envname
+    let envname = select-envname $envname $state
     let flakepath = write-flake $envname $state
-    print $"(ansi grey)Building env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
     ^nix build $flakepath -o ([$env.HOME .envil current] | path join)
     print $"(ansi grey)Switched to env (ansi yellow)`($envname)'(ansi reset)"
+}
+
+# Update an environment's inputs (package sources), and update its associated flake.lock file
+#
+# This will NOT rebuild the environment, you need to do an `envil switch/shell' again afterwards
+def "main update" [
+    envname: string = "" # The environment whose flake.lock should be updated
+    --statedir (-d) = "" # Where to read the envil state and look for flake.nix/lock files
+] {
+    let state = get-state $statedir
+    let envname = select-envname $envname $state
+    let flakepath = write-flake $envname $state
+    ^nix flake update --flake $flakepath
+    print $"(ansi grey)Updated flake.lock for env (ansi yellow)`($envname)'(ansi reset)"
 }
