@@ -69,7 +69,7 @@ def "main set-statedir" [
     print $"(ansi grey)Default state dir set to (ansi yellow)`($statedir)'(ansi reset)"
 }
 
-# Apply the selected environment, ie. switch the bins in `<statedir>/current/bin' to those of <envname>
+# Apply the selected environment, ie. switch the bins in `.envil/current/bin' to those of <envname>
 def "main switch" [
     envname: string = "" # The environment to switch to
     --statedir (-d) = "" # Where to read the envil state from and write the temporary flake.nix
@@ -78,6 +78,6 @@ def "main switch" [
     let envname = select-envname $state $envname
     let flakepath = write-flake $envname $state
     print $"(ansi grey)Building env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
-    ^nix build $flakepath -o $"($state.statedir)/current"
+    ^nix build $flakepath -o ([$env.HOME .envil current] | path join)
     print $"(ansi grey)Switched to env (ansi yellow)`($envname)'(ansi reset)"
 }
