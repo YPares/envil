@@ -32,7 +32,7 @@ leaving you unable to select which one you want.
 To install `envil`, first you need to [install Nix](https://determinate.systems/nix/). Then just do:
 
 ```sh
-nix profile install github:YPares/envil
+nix profile install github:YPares/envil#envil
 ```
 
 to have `envil` available in your `PATH`. Alternatively, you can run `nix run github:YPares/envil` everytime you want to use `envil`.
@@ -52,7 +52,7 @@ desired state of several environments, and (2) the Nix flakes it generated for t
 Run `envil -h` to see all the commands available. For instance, if you clone that repo and `cd` into your local clone,
 you can run the following:
 
-- `envil envs-config -d examples/statedir`: list all the envs defined in the example statedir
+- `envil info -d examples/statedir`: list all the envs defined in the example statedir
 - `envil shell -d examples/statedir`: show a dropdown list of all envs in the example statedir to let you select one.
   Then open a subshell, where the tools from the selected env are in your `PATH`
 - `envil update some-env`: reads your own `~/.envil` statedir (the default without a `-d`), tries to find an env
@@ -71,6 +71,17 @@ PS1="${shell_env_bit}...the rest of your prompt..."
 ```
 
 (`$SHLVL` is a standard env var telling you how many levels of subshells you are currently in)
+
+## Updating `envil`
+
+Do `nix profile upgrade envil`.
+
+If this does nothing (as mentioned above, `nix profile` isn't that great), do:
+
+```sh
+nix profile remove envil
+nix profile install github:YPares/envil#envil
+```
 
 ## Roadmap
 

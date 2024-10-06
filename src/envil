@@ -53,11 +53,11 @@ def "main shell" [
 }
 
 # Print the current config of each env
-def "main envs-config" [
+def "main info" [
     --statedir (-d) = "" # Where to read the envil state from
 ] {
     let state = get-state $statedir
-    print $"(ansi grey)Current statedir is (ansi yellow)`($state.statedir)'(ansi grey):\n"
+    print $"(ansi grey)Reading info from statedir (ansi yellow)`($state.statedir)'(ansi grey):\n"
     print $"(ansi green)($state | reject statedir | to yaml)(ansi reset)"
 }
 
@@ -92,5 +92,5 @@ def "main update" [
     let envname = select-envname $envname $state
     let flakepath = write-flake $envname $state
     ^nix flake update --flake $flakepath
-    print $"(ansi grey)Updated flake.lock for env (ansi yellow)`($envname)'(ansi reset)"
+    print $"Updated flake.lock for env (ansi yellow)`($envname)'(ansi reset)"
 }
