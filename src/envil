@@ -39,7 +39,7 @@ def write-flake [envname state] {
 }
 
 # Start a subshell containing <envname>, or run a command in this subshell
-def "main shell" [
+def --wrapped "main shell" [
     envname: string = "" # The environment to open in a subshell
     --statedir (-d) = "" # Where to read the envil state from and write the temporary flake.nix
     ...cmd # The command to run and its args
@@ -49,7 +49,11 @@ def "main shell" [
     let flakepath = write-flake $envname $state
     print $"(ansi grey)Starting a subshell with env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
     let args = if ($cmd | is-empty) {[]} else {["-c"] | append $cmd}
-    SHELL_ENV=$envname ^nix shell $flakepath ...$args
+    try {
+        SHELL_ENV=$envname ^nix shell $flakepath ...$args
+    } catch {
+        print $"(ansi grey)Last subshell command exited with (ansi yellow)($env.LAST_EXIT_CODE)(ansi reset)"
+    }
 }
 
 # Print the current config of each env

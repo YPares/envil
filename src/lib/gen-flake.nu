@@ -51,8 +51,7 @@ def output-flake [env_name systems inputs outputs] {
                                      "imp.nixpkgs.buildEnv")
                          envs (r (c $"Each environment used by env `($env_name)'")
                                  (rec2a ({default: $"envs.($env_name)"} | merge $outputs)))]
-                        envs)))))))) |
-    ^nix run "nixpkgs#nixfmt-classic"
+                        envs))))))))
 }
 
 # Prints out the flake that will generate the <env-name> environment
@@ -115,5 +114,10 @@ export def generate-flake [
 
     let $outputs = $envs_table | each {[$in.name $in.output]} | into record
 
-    output-flake $env_name $systems $inputs $outputs
+    output-flake $env_name $systems $inputs $outputs |
+    if ($env.ENVIL_NIX_FORMATTER? == null) {
+        $in
+    } else {
+        $in | run-external $env.ENVIL_NIX_FORMATTER
+    }
 }

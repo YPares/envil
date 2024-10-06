@@ -18,7 +18,10 @@
           default = envil;
 
           envil = imp.nixpkgs.writeShellScriptBin "envil" ''
-            ${imp.nixpkgs.nushell}/bin/nu -n "${./src}/envil" "$@"
+            ENVIL_NIX_FORMATTER=${imp.nixpkgs.nixfmt-classic}/bin/nixfmt \
+              ${imp.nixpkgs.nushell}/bin/nu -n \
+              "${./src}/envil" \
+              "$@"
           '';
         });
     };

@@ -26,7 +26,7 @@ This is **not** a tool to:
 - install and manage Nix for you,
 - write complicated Nix logic for you
 
-`envil` strongly believes in the K.I.S.S. principle. And it's not just meant for Nix beginners: if you already know Nix,
+Also, it's not just meant for Nix beginners: if you already know Nix,
 you may have still a use for it, as a small "top-level" flake manager, to be able to quickly switch between environments and/or
 tools you would already have defined as flake files.
 That is because in its current state, `envil` aims at being an alternative to the `nix profile` command, which doesn't support
