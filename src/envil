@@ -9,7 +9,7 @@ def main [] {
 
 def select-envname [envname state --verb="use"] {
     let envname = if $envname == "" {
-        $state.envs | columns | input list -f $"Select which env to ($verb):"
+        $state.envs | columns | sort | input list -f $"Select the env to ($verb):"
     } else {
         $envname
     }
@@ -70,7 +70,7 @@ def "main setdir" [
     statedir # A directory meant to contain an `envil-state.yaml' file and flakes generated from it
 ] {
     set-statedir $statedir
-    print $"(ansi grey)Default statedir set to (ansi yellow)`($statedir)'(ansi reset)"
+    print $"(ansi grey)Default statedir set to (ansi yellow)`($statedir | path expand)'(ansi reset)"
 }
 
 # Apply the selected environment, ie. switch the bins in `.envil/current/bin' to those of <envname>
