@@ -57,7 +57,7 @@ def --wrapped "main shell" [
 }
 
 # Print the current config of each env
-def "main info" [
+def "main envs" [
     --statedir (-d) = "" # Where to read the envil state from
 ] {
     let state = get-state $statedir
@@ -70,7 +70,7 @@ def "main setdir" [
     statedir # A directory meant to contain an `envil-state.yaml' file and flakes generated from it
 ] {
     set-statedir $statedir
-    print $"(ansi grey)Default state dir set to (ansi yellow)`($statedir)'(ansi reset)"
+    print $"(ansi grey)Default statedir set to (ansi yellow)`($statedir)'(ansi reset)"
 }
 
 # Apply the selected environment, ie. switch the bins in `.envil/current/bin' to those of <envname>

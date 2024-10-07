@@ -60,7 +60,7 @@ desired state of several environments, and (2) the Nix flakes it generated for t
 Run `envil -h` to see all the commands available. For instance, if you clone that repo and `cd` into your local clone,
 you can run the following:
 
-- `envil info -d examples/statedir`: list all the envs defined in the example statedir
+- `envil envs -d examples/statedir`: list all the envs defined in the example statedir
 - `envil shell -d examples/statedir`: show a list of all envs in the example statedir and let you select one.
   Then open a subshell, where the tools from the selected env are in your `PATH`
 - `envil update some-env`: reads your own `~/.envil` statedir (the default without a `-d`), tries to find an env
