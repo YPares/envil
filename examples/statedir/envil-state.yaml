@@ -1,6 +1,12 @@
 ## This is an example of how to define an envil set of environments,
 ## each one with its set of packages (tools)
 
+includes:
+  [] # You can refer to a list of other statedirs that will be included in the state.
+  # If this yaml defines envs or inputs that are named the same than
+  # inputs/envs defined by an imported statedir, the ones here will
+  # override the imported ones.
+  # Relative paths in "includes" are considered relative to this file
 inputs: # 'inputs' are "package sources" in nix flakes parlance
   pkgs: # Here we just give a name to an input
     "github:NixOS/nixpkgs/nixpkgs-unstable"
@@ -9,14 +15,12 @@ inputs: # 'inputs' are "package sources" in nix flakes parlance
     "github:YPares/nushellWith": # A flake URL like above, but with some extra config
       nixpkgs: pkgs
       # ^^ This is a "follows" link. It means that the 'nushellWith' input
-      # has itself a 'nixpkgs' input,
-      # that we ask to follow our own 'pkgs' input declared just above,
+      # has a 'nixpkgs' input, that we ask to follow our own 'pkgs' input declared just above,
       # instead of using its own locked version
 envs:
   nix: # This declares and environment, and names it (you can use any name
     # except 'default', which is reserved)
-    contents: # Which packages should be provided by the environment,
-      # when activated
+    contents: # Which packages should be provided by the environment when it is activated
       pkgs: # A package source (from 'inputs')
         - nil # Which packages to use from that source
         - nixfmt-classic
@@ -55,7 +59,7 @@ envs:
       pkgs:
         - nodejs-slim_22
         - nodePackages: # A shortcut: every nested package is in the "nixpkgs.nodePackages" attr
-          - npm
-          - yarn
-          - typescript
-          - typescript-language-server
+            - npm
+            - yarn
+            - typescript
+            - typescript-language-server

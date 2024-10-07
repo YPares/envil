@@ -1,5 +1,5 @@
 use nix-printer.nu *
-use statedir.nu nixpkgs_input
+use state.nu nixpkgs_input
 
 def or-else [defval] {
     if $in == null {$defval} else {$in}

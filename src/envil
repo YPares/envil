@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 
 use lib/gen-flake.nu *
-use lib/statedir.nu *
+use lib/state.nu *
 
 def main [] {
     help main
