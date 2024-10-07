@@ -9,7 +9,8 @@ def main [] {
 
 def select-envname [envname state --verb="use"] {
     let envname = if $envname == "" {
-        $state.envs | columns | sort | input list -f $"Select the env to ($verb):"
+        $state.envs | columns | sort |
+        input list -f $"Select the env \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb):"
     } else {
         $envname
     }
@@ -61,8 +62,8 @@ def "main envs" [
     --statedir (-d) = "" # Where to read the envil state from
 ] {
     let state = get-state $statedir
-    print $"(ansi grey)Reading info from statedir (ansi yellow)`($state.statedir)'(ansi grey):\n"
     print $"(ansi green)($state | reject statedir | to yaml)(ansi reset)"
+    print $"(ansi grey)[Config read from statedir (ansi yellow)`($state.statedir)'(ansi grey)](ansi reset)"
 }
 
 # Set the default envil statedir to <statedir>
@@ -82,7 +83,20 @@ def "main switch" [
     let envname = select-envname $envname $state --verb "switch to"
     let flakepath = write-flake $envname $state
     ^nix build $flakepath -o ([$env.HOME .envil current] | path join)
+    set-cur-env $envname $state.statedir
     print $"(ansi grey)Switched to env (ansi yellow)`($envname)'(ansi reset)"
+}
+
+# Get the current environment, ie. the last environment the user switched to
+def "main current" [] {
+    let currents = get-cur-env
+    if ($currents == null) {
+        print "No env is activated currently"
+    } else {
+        print $"Current env is (ansi yellow)`($currents.env)'(ansi reset) \(from statedir (ansi yellow)`($currents.src_statedir)'(ansi reset))"
+        print "Bins in scope:"
+        ls -s ([$env.HOME .envil current bin] | path join) | get name
+    }
 }
 
 # Update an environment's inputs (package sources), and update its associated flake.lock file

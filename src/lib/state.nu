@@ -3,7 +3,7 @@ export const nixpkgs_input = {nixpkgs: "github:NixOS/nixpkgs/nixpkgs-unstable"}
 export def get-state [statedir --should-exist]: nothing -> record {
     let statedir = if $statedir == "" {
         try {
-            open ([$env.HOME .envil current-state.txt] | path join)
+            open ([$env.HOME .envil default-statedir.txt] | path join)
         } catch {
             [$env.HOME .envil] | path join
         }
@@ -45,5 +45,17 @@ export def get-state [statedir --should-exist]: nothing -> record {
 }
 
 export def set-statedir [statedir] {
-    $statedir | path expand | save -f ([$env.HOME .envil current-state.txt] | path join)
+    $statedir | path expand | save -f ([$env.HOME .envil default-statedir.txt] | path join)
+}
+
+export def set-cur-env [envname src_statedir] {
+    {env: $envname, src_statedir: $src_statedir} | save -f ([$env.HOME .envil current-env.nuon] | path join)
+}
+
+export def get-cur-env [] {
+    try {
+        open ([$env.HOME .envil current-env.nuon] | path join)
+    } catch {
+        null
+    }
 }
