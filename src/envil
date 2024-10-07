@@ -36,7 +36,7 @@ def write-flake [envname state] {
     let flakepath = [$state.statedir env-flakes $envname] | path join | path expand
     mkdir $flakepath
     generate-flake $envname $state | save -rf ([$flakepath flake.nix] | path join)
-    $"path:($flakepath)"
+    $flakepath
 }
 
 # Start a subshell containing <envname>, or run a command in this subshell
@@ -51,7 +51,7 @@ def --wrapped "main shell" [
     print $"(ansi grey)Starting a subshell with env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
     let args = if ($cmd | is-empty) {[]} else {["-c"] | append $cmd}
     try {
-        SHELL_ENV=$envname ^nix shell $flakepath ...$args
+        SHELL_ENV=$envname ^nix shell $"path:($flakepath)" ...$args
     } catch {
         print $"(ansi grey)Last subshell command exited with (ansi yellow)($env.LAST_EXIT_CODE)(ansi reset)"
     }
@@ -82,7 +82,7 @@ def "main switch" [
     let state = get-state $statedir
     let envname = select-envname $envname $state --verb "switch to"
     let flakepath = write-flake $envname $state
-    ^nix build $flakepath -o ([$env.HOME .envil current] | path join)
+    ^nix build $"path:($flakepath)" -o ([$env.HOME .envil current] | path join)
     set-cur-env $envname $state.statedir
     print $"(ansi grey)Switched to env (ansi yellow)`($envname)'(ansi reset)"
 }
@@ -109,6 +109,9 @@ def "main update" [
     let state = get-state $statedir
     let envname = select-envname $envname $state --verb "update"
     let flakepath = write-flake $envname $state
-    ^nix flake update --flake $flakepath
+    do {
+        cd $flakepath
+        ^nix flake update
+    }
     print $"Updated flake.lock for env (ansi yellow)`($envname)'(ansi reset)"
 }
