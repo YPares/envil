@@ -14,20 +14,19 @@ inputs: # 'inputs' are "package sources" in nix flakes parlance
       # instead of using its own locked version
 envs:
   nix: # This declares and environment, and names it (you can use any name
-       # except 'default', which is reserved)
+    # except 'default', which is reserved)
     contents: # Which packages should be provided by the environment,
-              # when activated
+      # when activated
       pkgs: # A package source (from 'inputs')
-        - nil  # Which packages to use from that source
+        - nil # Which packages to use from that source
         - nixfmt-classic
         - cachix
   devops:
     extends: # This is how an environment "inherits" from others, so you
-             # don't have to repeat yourself
+      # don't have to repeat yourself
       - nix
       - vcs
-    contents: # ...and from that point, you know everything you need :)
-              # Thanks for trying envil!
+    contents:
       pkgs:
         - kind
         - kubectl
@@ -51,3 +50,12 @@ envs:
       - vcs
       - nix
       - nushell
+  node:
+    contents:
+      pkgs:
+        - nodejs-slim_22
+        - nodePackages: # A shortcut: every nested package is in the "nixpkgs.nodePackages" attr
+          - npm
+          - yarn
+          - typescript
+          - typescript-language-server

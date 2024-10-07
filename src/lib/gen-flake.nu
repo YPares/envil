@@ -5,18 +5,28 @@ def or-else [defval] {
     if $in == null {$defval} else {$in}
 }
 
+def get-input-pkgs [prefix pkg_list] {
+    $pkg_list | each {|p|
+        if (($p | describe) == "string") {
+            if ($p | str contains " ") {
+                $"\(($p))"
+            } else {
+                $"($prefix).($p)"
+            }
+        } else { # $p is a record
+            let attr = $p | columns | get 0
+            let vals = $p | values | get 0
+            (get-input-pkgs $"($prefix).($attr)" $vals)
+        }
+    } | flatten
+}
+
 def gen-one-env [env_name env_desc]: nothing -> record<inputs: list<string>, output: string, extends: list<string>> {
     mut env_inputs = []
     mut env_paths = []
     for i in ($env_desc.contents? | transpose name pkgs) {
         $env_inputs = $env_inputs | append $i.name
-        for p in $i.pkgs {
-            mut pkg = $"imp.($i.name).($p)"
-            if ($pkg | str contains " ") {
-                $pkg = $"\(($pkg))"
-            }
-            $env_paths = $env_paths | append $pkg
-        }
+        $env_paths = $env_paths | append (get-input-pkgs $"imp.($i.name)" $i.pkgs)
     }
     for i in $env_desc.extends? {
         $env_paths = $env_paths | append $"envs.($i)"
@@ -100,7 +110,12 @@ export def generate-flake [
 
     mut inputs = {}
     for i in ($envs_table | each {$in.inputs} | flatten | uniq) {
-        mut input_url = $state.inputs | get $i
+        mut input_url = try {
+                $state.inputs | get $i
+            } catch {|e|
+                print $"(ansi red)Input (ansi yellow)`($i)'(ansi red) is not defined in the `inputs' section(ansi reset)"
+                error make $e
+            }
         if (($input_url | describe) | str starts-with "record") {
             # $input_url is a record `{"<url>": [followed_input0, followed_input1, ...]}'
             let actual_url = $input_url | columns | get 0
