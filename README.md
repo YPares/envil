@@ -66,14 +66,12 @@ and any command used without `-d` will just work on the last statedir used.
 Run `envil -h` to see all the commands available. For instance, if you clone that repository and `cd` into your local clone,
 you can run the following:
 
-- `envil envs -d examples/statedir`: list all the envs defined in the example statedir
-- `envil shell`: show a list of all envs in the last used statedir and let you select one.
+- `envil shell -d examples/statedir`: show a list of all envs in the example statedir and let you select one.
   Then open a subshell, where the tools from the selected env are in your `PATH`
-- `envil switch`: does the same than above, but activates the selected env globally by adding to your `PATH`
+- `envil switch -d examples/statedir`: does the same than above, but activates the selected env globally by adding to your `PATH`
   instead of opening a subshell
-- `envil update some-env`: in the last used statedir, tries to find an env
-  named `some-env` and updates its flake.lock file. You then need to run `envil switch` again to get
-  the updated packages
+- `envil update some-env`: in the last used statedir, tries to find an env named `some-env` and updates its flake.lock file.
+  You then need to run `envil switch` again to get the updated packages
 - `envil current`: show the currently activated env, the last used statedir, and (if any) the env activated in the current subshell
 
 Subshells export the `$SHELL_ENV` env var. You can use it in your shell prompt (eg. `PS1` for bash) so it shows

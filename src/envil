@@ -61,16 +61,6 @@ def --wrapped "main shell" [
     }
 }
 
-# Print the current config of each env
-def "main envs" [
-    --statedir (-d) = "" # Where to read the envil state from
-] {
-    let state = get-state $statedir
-    set-currents --statedir $state.statedir
-    print $"(ansi green)($state | reject statedir | to yaml)(ansi reset)"
-    print $"(ansi grey)[Config read from statedir (ansi yellow)`($state.statedir)'(ansi grey)](ansi reset)"
-}
-
 # Apply the selected environment, ie. switch the bins in `$HOME/.envil/current/bin' to those of <envname>
 def "main switch" [
     envname: string = "" # The environment to switch to
