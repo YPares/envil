@@ -10,7 +10,7 @@ def main [] {
 def select-envname [envname state --verb="use"] {
     let envname = if $envname == "" {
         $state.envs | transpose name desc | flatten | select name description? |
-        update description {|e| $"($e.name) (ansi grey)\(($e.description))(ansi reset)"} | sort-by name |
+        update description {|e| $"($e.name) (ansi grey)\(($e.description))(ansi reset)"} | sort-by -i name |
         input list -d description -f $"Select the env \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb):" |
         get name
     } else {
@@ -94,12 +94,12 @@ def "main current" [
     }
     if ($currents.env? != null) {
         print $"- Activated env: (ansi yellow)`($currents.env)'(ansi reset)"
-        let binlist = $"(ls_or_empty ([$env.HOME .envil current bin] | path join))"
+        let binlist = $"(ls_or_empty ([$env.HOME .envil current bin] | path join) | sort -i)"
         print $"  | bins: ($binlist)"
     }
     if ($env.SHELL_ENV? != null) {
         print $"- Env in this subshell: (ansi yellow)`($env.SHELL_ENV)'(ansi reset)"
-        let binlist = $"($env.PATH | where {str ends-with $"($env.SHELL_ENV)-env/bin"} | get 0 | ansi strip | ls_or_empty $in)"
+        let binlist = $"($env.PATH | where {str ends-with $"($env.SHELL_ENV)-env/bin"} | get 0 | ansi strip | ls_or_empty $in | sort -i)"
         print $"  | bins: ($binlist)"
     }
 }
