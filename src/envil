@@ -87,15 +87,26 @@ def "main switch" [
     print $"(ansi grey)Switched to env (ansi yellow)`($envname)'(ansi reset)"
 }
 
-# Get the current environment, ie. the last environment the user switched to
-def "main current" [] {
+# Get the current environment, ie. the last environment the user switched to, and the env activated in a subshell (if any)
+def "main current" [
+    --bins (-b) # Display bins put in PATH along with the env(s)
+] {
     let currents = get-cur-env
     if ($currents == null) {
         print "No env is activated currently"
     } else {
-        print $"Current env is (ansi yellow)`($currents.env)'(ansi reset) \(from statedir (ansi yellow)`($currents.src_statedir)'(ansi reset))"
-        print "Bins in scope:"
-        ls -s ([$env.HOME .envil current bin] | path join) | get name
+        print $"Env activated: (ansi yellow)`($currents.env)'(ansi reset) \(from (ansi yellow)`($currents.src_statedir)'(ansi reset))"
+        if $bins {
+            print $"Bins from ($currents.env):"
+            print (ls -s ([$env.HOME .envil current bin] | path join) | get name)
+        }
+        if ($env.SHELL_ENV? != null) {
+            print $"Env in (ansi white_bold)subshell(ansi reset): (ansi yellow)`($env.SHELL_ENV)'(ansi reset)"
+            if $bins {
+                print $"Bins from ($env.SHELL_ENV):"
+                $env.PATH | where {str ends-with $"($env.SHELL_ENV)-env/bin"} | get 0 | ansi strip | ls -s $in | get name
+            }
+        }
     }
 }
 
