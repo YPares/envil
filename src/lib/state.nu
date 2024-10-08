@@ -1,11 +1,16 @@
 export const nixpkgs_input = {nixpkgs: "github:NixOS/nixpkgs/nixpkgs-unstable"}
 
+def currents-path [] {
+    ([$env.HOME .envil currents.nuon] | path join)
+}
+
 export def get-state [statedir --should-exist]: nothing -> record {
     let statedir = if $statedir == "" {
         try {
-            open ([$env.HOME .envil default-statedir.txt] | path join)
+            open (currents-path) | get statedir
         } catch {
-            [$env.HOME .envil] | path join
+            print $"(ansi red)No statedir is known. First use a command with `-d' to use or create a statedir(ansi reset)"
+            error make {msg: "No statedir"}
         }
     } else {$statedir}
     if (not ($statedir | path exists)) {
@@ -44,18 +49,28 @@ export def get-state [statedir --should-exist]: nothing -> record {
     $state | insert statedir $statedir
 }
 
-export def set-statedir [statedir] {
-    $statedir | path expand | save -f ([$env.HOME .envil default-statedir.txt] | path join)
-}
-
-export def set-cur-env [envname src_statedir] {
-    {env: $envname, src_statedir: $src_statedir} | save -f ([$env.HOME .envil current-env.nuon] | path join)
-}
-
-export def get-cur-env [] {
-    try {
-        open ([$env.HOME .envil current-env.nuon] | path join)
-    } catch {
-        null
+export def set-currents [
+    --envname = null
+    --statedir = null
+] {
+    mut currents = get-currents
+    if ($envname != null) {
+        $currents.env = $envname
     }
+    if ($statedir != null) {
+        $currents.statedir = $statedir
+    }
+    $currents | save -f (currents-path)
+}
+
+export def get-currents [] {
+    try {
+        open (currents-path)
+    } catch {
+        {}
+    }
+}
+
+export def erase-current-env [] {
+    get-currents | collect | reject env | save -f (currents-path)
 }

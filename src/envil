@@ -29,6 +29,7 @@ def "main flake" [
 ] {
     let state = get-state $statedir
     let envname = select-envname $envname $state --verb "generate a flake from"
+    set-currents --statedir $state.statedir
     generate-flake $envname $state $systems
 }
 
@@ -50,6 +51,7 @@ def --wrapped "main shell" [
     let flakepath = write-flake $envname $state
     print $"(ansi grey)Starting a subshell with env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
     let args = if ($cmd | is-empty) {[]} else {["-c"] | append $cmd}
+    set-currents --statedir $state.statedir
     try {
         SHELL_ENV=$envname ^nix shell $"path:($flakepath)" ...$args
     } catch {
@@ -62,19 +64,12 @@ def "main envs" [
     --statedir (-d) = "" # Where to read the envil state from
 ] {
     let state = get-state $statedir
+    set-currents --statedir $state.statedir
     print $"(ansi green)($state | reject statedir | to yaml)(ansi reset)"
     print $"(ansi grey)[Config read from statedir (ansi yellow)`($state.statedir)'(ansi grey)](ansi reset)"
 }
 
-# Set the default envil statedir to <statedir>
-def "main setdir" [
-    statedir # A directory meant to contain an `envil-state.yaml' file and flakes generated from it
-] {
-    set-statedir $statedir
-    print $"(ansi grey)Default statedir set to (ansi yellow)`($statedir | path expand)'(ansi reset)"
-}
-
-# Apply the selected environment, ie. switch the bins in `.envil/current/bin' to those of <envname>
+# Apply the selected environment, ie. switch the bins in `$HOME/.envil/current/bin' to those of <envname>
 def "main switch" [
     envname: string = "" # The environment to switch to
     --statedir (-d) = "" # Where to read the envil state from and write the temporary flake.nix
@@ -83,30 +78,37 @@ def "main switch" [
     let envname = select-envname $envname $state --verb "switch to"
     let flakepath = write-flake $envname $state
     ^nix build $"path:($flakepath)" -o ([$env.HOME .envil current] | path join)
-    set-cur-env $envname $state.statedir
+    set-currents --envname $envname --statedir $state.statedir
     print $"(ansi grey)Switched to env (ansi yellow)`($envname)'(ansi reset)"
+}
+
+def ls_or_empty [folder] {
+    try {
+        ls -s $folder | get name
+    } catch {
+        []
+    }
 }
 
 # Get the current environment, ie. the last environment the user switched to, and the env activated in a subshell (if any)
 def "main current" [
-    --bins (-b) # Display bins put in PATH along with the env(s)
 ] {
-    let currents = get-cur-env
-    if ($currents == null) {
-        print "No env is activated currently"
-    } else {
-        print $"Env activated: (ansi yellow)`($currents.env)'(ansi reset) \(from (ansi yellow)`($currents.src_statedir)'(ansi reset))"
-        if $bins {
-            print $"Bins from ($currents.env):"
-            print (ls -s ([$env.HOME .envil current bin] | path join) | get name)
-        }
-        if ($env.SHELL_ENV? != null) {
-            print $"Env in (ansi white_bold)subshell(ansi reset): (ansi yellow)`($env.SHELL_ENV)'(ansi reset)"
-            if $bins {
-                print $"Bins from ($env.SHELL_ENV):"
-                $env.PATH | where {str ends-with $"($env.SHELL_ENV)-env/bin"} | get 0 | ansi strip | ls -s $in | get name
-            }
-        }
+    let currents = get-currents
+    if ($currents | is-empty) {
+        print $"(ansi yellow)No activated env and no known statedir(ansi reset)"
+    }
+    if ($currents.statedir? != null) {
+        print $"- Last statedir used: (ansi yellow)`($currents.statedir)'(ansi reset)"
+    }
+    if ($currents.env? != null) {
+        print $"- Activated env: (ansi yellow)`($currents.env)'(ansi reset)"
+        let binlist = $"(ls_or_empty ([$env.HOME .envil current bin] | path join))"
+        print $"  | bins: ($binlist)"
+    }
+    if ($env.SHELL_ENV? != null) {
+        print $"- Env in this subshell: (ansi yellow)`($env.SHELL_ENV)'(ansi reset)"
+        let binlist = $"($env.PATH | where {str ends-with $"($env.SHELL_ENV)-env/bin"} | get 0 | ansi strip | ls_or_empty $in)"
+        print $"  | bins: ($binlist)"
     }
 }
 
@@ -120,9 +122,26 @@ def "main update" [
     let state = get-state $statedir
     let envname = select-envname $envname $state --verb "update"
     let flakepath = write-flake $envname $state
-    do {
-        cd $flakepath
-        ^nix flake update
+    try {
+        ^nix flake update --flake $"path:($flakepath)"
+    } catch {
+        # We may be on an older version of nix where the --flake arg does not exist:
+        ^nix flake update $"path:($flakepath)"
     }
+    set-currents --statedir $state.statedir
     print $"Updated flake.lock for env (ansi yellow)`($envname)'(ansi reset)"
+}
+
+# Deactivate any env that we have switched to (envil adds nothing more to the PATH)
+def "main deactivate" [] {
+    let currents = get-currents
+    try {
+        erase-current-env
+        rm ([$env.HOME .envil current] | path join)
+    } catch {
+        print $"(ansi yellow)No env was activated(ansi reset)"
+    }
+    try {
+        print $"(ansi grey)Env (ansi yellow)`($currents.env)'(ansi grey) has been deactivated(ansi reset)"
+    }
 }

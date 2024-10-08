@@ -85,7 +85,8 @@ export def generate-flake [
         let cur_env = try {
             $state.envs | get $cur_name
         } catch {
-            error make {msg: $"Env `($cur_name)' does not exist in statedir `($state.statedir)'"}
+            print $"(ansi red)Env (ansi yellow)`($cur_name)'(ansi red) does not exist in statedir (ansi yellow)`($state.statedir)'(ansi reset)"
+            error make {msg: $"Env `($cur_name)' not found"}
         }
         mut cur_done = gen-one-env $cur_name $cur_env
         let extends = $cur_done.extends
