@@ -25,7 +25,10 @@ envs:
         - nil # Which packages to use from that source
         - nixfmt-classic
         - cachix
+    description: # (optional) A quick comment about what the env is for
+      "Tools to work with nix code in vscode"
   devops:
+    description: "Tools to work with kube"
     extends: # This is how an environment "inherits" from others, so you
       # don't have to repeat yourself
       - nix
@@ -45,16 +48,19 @@ envs:
       pkgs:
         - jq
   vcs:
+    description: "git & jj"
     contents:
       pkgs:
         - git
         - jujutsu
   vscode-bins:
+    description: "Tools needed by some VSCode extensions"
     extends:
       - vcs
       - nix
       - nushell
   node:
+    description: "Tools for JS & TS"
     contents:
       pkgs:
         - nodejs-slim_22

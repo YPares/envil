@@ -9,8 +9,10 @@ def main [] {
 
 def select-envname [envname state --verb="use"] {
     let envname = if $envname == "" {
-        $state.envs | columns | sort |
-        input list -f $"Select the env \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb):"
+        $state.envs | transpose name desc | flatten | select name description? |
+        update description {|e| $"($e.name) (ansi grey)\(($e.description))(ansi reset)"} | sort-by name |
+        input list -d description -f $"Select the env \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb):" |
+        get name
     } else {
         $envname
     }
