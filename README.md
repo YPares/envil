@@ -78,6 +78,8 @@ you can run the following:
 - `envil update some-env`: in the last used statedir, tries to find an env named `some-env` and updates its flake.lock file.
   You then need to run `envil switch` again to get the updated packages
 - `envil current`: show the currently activated env, the last used statedir, and (if any) the env activated in the current subshell
+- `envil checkpath`: shows which bins are present twice or more in your PATH while not pointing to the same actual exes, and therefore
+  can create an ambiguity (useful in nested subshells)
 
 Subshells started by `envil` export the `$SHELL_ENV` env var. You can use it in your shell prompt (eg. `PS1` for bash) so it shows
 which env is activated in the subshell. For instance if you use bash, add the following to your `.bashrc`:

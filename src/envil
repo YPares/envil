@@ -82,6 +82,21 @@ def ls_or_empty [folder] {
     }
 }
 
+# Report if some bins are present several times in your PATH, but pointing to different actual executables, thus creating an ambiguity
+def "main checkpath" [
+    --all (-a) # Check for all bins, not just those in the nix store
+] {
+    let bins = $env.PATH | each {|p| ls $p | insert source $p} | flatten | rename -c {name: path} |
+               insert stem {$in.path | path parse | get stem} | update path {path expand} |
+               if $all { $in } else { where path starts-with /nix/store }
+    let bins = $bins | group-by stem --to-table | each {{group: $in.group, items: ($in.items | uniq-by path | uniq-by source)}}
+    for bin in $bins {
+        if (($bin.items | length) >= 2) {
+            print $"(ansi yellow)`($bin.group)'(ansi reset) is present more than once in your PATH. Found in: ($bin.items.source)"
+        }
+    }
+}
+
 # Get the current environment, ie. the last environment the user switched to, and the env activated in a subshell (if any)
 def "main current" [
 ] {
