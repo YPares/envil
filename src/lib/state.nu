@@ -4,6 +4,8 @@ def currents-path [] {
     ([$env.HOME .envil currents.nuon] | path join)
 }
 
+# Reads the state from the statedir.
+# Adds to this record a 'statedir' field, which contains the absolute path of the statedir
 export def get-state [statedir --should-exist]: nothing -> record {
     let statedir = if $statedir == "" {
         try {
@@ -12,7 +14,7 @@ export def get-state [statedir --should-exist]: nothing -> record {
             print $"(ansi red)No statedir is known. First use a command with `-d' to use or create a statedir(ansi reset)"
             error make {msg: "No statedir"}
         }
-    } else {$statedir}
+    } else {$statedir | path expand}
     if (not ($statedir | path exists)) {
         if $should_exist {
             error make {msg: $"Dir ($statedir) does not exist"}

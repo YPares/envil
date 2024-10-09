@@ -36,7 +36,7 @@ def "main flake" [
 }
 
 def write-flake [envname state] {
-    let flakepath = [$state.statedir env-flakes $envname] | path join | path expand
+    let flakepath = [$state.statedir env-flakes $envname] | path join
     mkdir $flakepath
     generate-flake $envname $state | save -rf ([$flakepath flake.nix] | path join)
     $flakepath
