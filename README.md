@@ -20,8 +20,13 @@ This is a tool to:
 - switch to a specific environment (add the tools that an env contains to your `PATH` and remove those of the previously activated env),
 - start a subshell with a specific env activated.
 
-It aims at providing people who are not regular Nix users a quick and simple way to start with custom,
-isolated & reproducible environments, one of the major reasons to use Nix.
+In the Nix ecosystem, a _flake_ is a file that describes a set of tools and programs ("outputs") for various possible systems,
+how to build those programs, and what is needed to build them ("inputs"). Nix is actually a fairly generic programming language,
+which is why some seemingly simple use cases (such as listing a fixed set of pre-existing packages in a flake and installing them) may appear more complex
+to tackle than they need to.
+
+`envil` targets some of those simple use cases. It aims at providing people who are not regular Nix users a quick way to start with custom,
+isolated & reproducible (ie. "rebuildable identically elsewhere") environments, one of the major reasons to use Nix.
 
 This is **not** a tool to:
 
@@ -31,8 +36,8 @@ This is **not** a tool to:
 Also, it's not just meant for Nix beginners: if you already know Nix,
 you may have still a use for it, as a small "top-level" flake manager, to be able to quickly switch between environments and/or
 tools you would already have defined as flake files.
-That is because in its current state, `envil` aims at being an alternative to the `nix profile` command, which doesn't support
-multiple profiles and contributes to cluttering your PATH. `envil` enables you and incites you to be selective and to
+That is because in its current state, `envil` aims at being an alternative to the `nix profile` command, which makes inconvenient to work with
+multiple profiles and contributes to cluttering your PATH. Conversely, `envil` enables you and incites you to be selective and to
 quickly switch between environments or start shells to avoid situations where you end up with two different versions
 of the same tool in your `PATH`, or things like two different `python` installations but each one configured with its own libraries,
 leaving you unable to select which one you want.
@@ -74,7 +79,7 @@ you can run the following:
   You then need to run `envil switch` again to get the updated packages
 - `envil current`: show the currently activated env, the last used statedir, and (if any) the env activated in the current subshell
 
-Subshells export the `$SHELL_ENV` env var. You can use it in your shell prompt (eg. `PS1` for bash) so it shows
+Subshells started by `envil` export the `$SHELL_ENV` env var. You can use it in your shell prompt (eg. `PS1` for bash) so it shows
 which env is activated in the subshell. For instance if you use bash, add the following to your `.bashrc`:
 
 ```bash
@@ -91,29 +96,20 @@ PS1="${shell_env_bit}...the rest of your prompt..."
 
 Do `nix profile upgrade envil --refresh`.
 
-## Roadmap
-
-- Add commands to manipulate the yaml state, so manual edition is no longer needed.
-- Add a protection against same exe being twice in your PATH
-
 ## Related tools & philosophy
 
 `envil` is related to [`devenv`](https://devenv.sh/), [`devbox`](https://www.jetify.com/docs/devbox/),
 [`flox`](https://flox.dev/), [`flakey-profile`](https://github.com/lf-/flakey-profile) and
 [`home-manager`](https://github.com/nix-community/home-manager) but with a focus on:
 
-- simplicity and usability by people who do not write or write little Nix code;
-- compatibility with existing Nix tools, and no disruption of your regular Nix installation:
-  `envil` will not manage Nix installation for you,
-  there are better tools to do that, such as the Determinate Systems Nix installer linked above. Likewise, `envil`
-  will not manage your nix profile like `flakey-profile` does. It operates on the side so you can keep using
-  `nix-env` or `nix profile` as usual;
-- reusable environments, meaning that any env can extend (or import, include, whatever you prefer) other envs;
-- production of regular and (almost) idiomatic Nix flakes that do not require `--impure`
+- usability by people who do not write or write little Nix code;
+- compatibility with existing Nix tools, and no disruption of your existing Nix installation and configuration;
+- reusable environments, meaning that any env can extend (or import, include, whatever you prefer) other envs, and that statedirs can include one another too;
+- production of regular and (as much as possible) idiomatic Nix flakes that do not require `--impure`.
 
 Also, `envil` strongly encourages decomposition. If you write Nix code, then writing small & local Nix flakes to
 then reuse them in `envil` envs is perfectly encouraged. `envil` will not write complicated Nix logic for you,
 just the classic boilerplate needed to define a top-level flake with some `pkgs.buildEnv` calls.
 
-`envil` will not do anything to track versions of environments. It represents its state as a very simple yaml file,
+Contrary to `nix profile`, `envil` will not do anything to track versions of environments via some history. It represents its state as a very simple yaml file,
 therefore versioning can just be done with `git`.
