@@ -85,7 +85,7 @@ Subshells started by `envil` export the `$SHELL_ENV` env var. You can use it in 
 which env is activated in the subshell. For instance if you use bash, add the following to your `.bashrc`:
 
 ```bash
-if [[ -n "$SHELL_ENV" ]]; then
+if [[ -n "$SHELL_ENV" || "$SHLVL" > 1 ]]; then
     shell_env_bit='\e[0;33m[$SHELL_ENV($SHLVL)]\e[0m'
 fi
 
