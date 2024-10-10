@@ -1,4 +1,6 @@
-export const nixpkgs_input = {nixpkgs: "github:NixOS/nixpkgs/nixpkgs-unstable"}
+use nix-printer.nu *
+
+export const nixpkgs_input = a nixpkgs (a url "github:NixOS/nixpkgs/nixpkgs-unstable")
 
 def currents-path [] {
     ([$env.HOME .envil currents.nuon] | path join)
@@ -22,33 +24,27 @@ export def get-state [statedir --should-exist]: nothing -> record {
             mkdir $statedir
         }
     }
-    let statefile = [$statedir envil-state.yaml] | path join
-    mut state = try {
-        open $statefile
-    } catch {
-        # print $"No envil state file found. Generating ($statefile)"
-        let defstate = {
-            inputs: $nixpkgs_input
-            envs: {basic: {}}
-        }
-        $defstate | save $statefile
-        $defstate
+    let statefile = [$statedir envil.nix] | path join
+    if (not ($statefile | path exists)) {
+        print $"No envil.nix file found. Generating ($statefile)"
+        (a
+            inputs $nixpkgs_input
+            envs (f "{self, nixpkgs, ...}"
+                    (with nixpkgs
+                        (a basic
+                            (a contents (l hello)
+                               description "Some environment"))))
+        ) | save $statefile
     }
-    
-    let includes = $state.includes?
-    for otherdir in $includes {
-        # Resolve otherdir relative to current $statedir
-        let otherdir = do {
-            cd $statedir
-            $otherdir | path expand
-        }
-        let other = get-state $otherdir --should-exist
-        $state = {
-            inputs: ($other.inputs? | or-else {} | merge ($state.inputs? | or-else {}))
-            envs: ($other.envs? | or-else {} | merge ($state.envs? | or-else {}))
-        }
+    let res = (^nix eval --json --expr
+        (with (r import $statefile)
+            (a inputs inputs
+               envs (r envs ))))
+    {
+        statedir: $statedir
+        inputs: $res.inputs
+        envs: $res.envs
     }
-    $state | insert statedir $statedir
 }
 
 export def set-currents [
