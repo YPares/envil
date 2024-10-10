@@ -86,7 +86,7 @@ def ls_or_empty [folder] {
 def "main checkpath" [
     --all (-a) # Check for all bins, not just those in the nix store
 ] {
-    let bins = $env.PATH | each {|p| ls $p | insert source $p} | flatten | rename -c {name: path} |
+    let bins = $env.PATH | each {|p| try {ls $p} catch {[]} | insert source $p} | flatten | rename -c {name: path} |
                insert stem {$in.path | path parse | get stem} | update path {path expand} |
                if $all { $in } else { where path starts-with /nix/store }
     let bins = $bins | group-by stem --to-table | each {{group: $in.group, items: ($in.items | uniq-by path | uniq-by source)}}

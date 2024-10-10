@@ -12,12 +12,10 @@
      |_____/
 ```
 
-**envil** forges Nix flakes.
-
-This is a tool to:
+`envil` is a tool to:
 
 - generate simple Nix flakes from a simple yaml description of a set of environments (see for instance [here](./examples/statedir/envil-state.yaml)),
-- switch to a specific environment (add the tools that an env contains to your `PATH` and remove those of the previously activated env),
+- switch to a specific environment (add the tools that this env contains to your `PATH`, and remove those of the previously activated env),
 - start a subshell with a specific env activated.
 
 In the Nix ecosystem, a _flake_ is a file that describes a set of tools and programs ("outputs") for various possible systems,
@@ -28,10 +26,10 @@ to tackle than they need to.
 `envil` targets some of those simple use cases. It aims at providing people who are not regular Nix users a quick way to start with custom,
 isolated & reproducible (ie. "rebuildable identically elsewhere") environments, one of the major reasons to use Nix.
 
-This is **not** a tool to:
+`envil` is **not** a tool to:
 
 - install and manage Nix for you,
-- write complicated Nix logic for you
+- write complicated Nix logic for you.
 
 Also, it's not just meant for Nix beginners: if you already know Nix,
 you may have still a use for it, as a small "top-level" flake manager, to be able to quickly switch between environments and/or
@@ -85,7 +83,7 @@ Subshells started by `envil` export the `$SHELL_ENV` env var. You can use it in 
 which env is activated in the subshell. For instance if you use bash, add the following to your `.bashrc`:
 
 ```bash
-if [[ -n "$SHELL_ENV" ]]; then
+if [[ -n "$SHELL_ENV" || "$SHLVL" > 1 ]]; then
     shell_env_bit='\e[0;33m[$SHELL_ENV($SHLVL)]\e[0m'
 fi
 
