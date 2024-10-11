@@ -64,7 +64,7 @@ envs:
     contents:
       pkgs:
         - nodejs-slim_22
-        - nodePackages: # A shortcut: every nested package is in the "nixpkgs.nodePackages" attr
+        - nodePackages: # A shortcut (every package nested here is under the "nodePackages" attr)
             - npm
             - yarn
             - typescript

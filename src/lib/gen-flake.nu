@@ -135,9 +135,9 @@ export def generate-flake [
     let $outputs = $envs_table | each {[$in.name $in.output]} | into record
 
     output-flake $env_name $systems $inputs $outputs |
-    if ($env.ENVIL_NIX_FORMATTER? == null) {
+    if ($env.NIX_FORMATTER? == null) {
         $in
     } else {
-        $in | run-external $env.ENVIL_NIX_FORMATTER
+        $in | run-external $env.NIX_FORMATTER
     }
 }

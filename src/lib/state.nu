@@ -1,5 +1,17 @@
 export const nixpkgs_input = {nixpkgs: "github:NixOS/nixpkgs/nixpkgs-unstable"}
 
+const defstate = {
+    inputs: $nixpkgs_input
+    envs: {
+        basic: {
+            description: "Just a basic env"
+            contents: {
+                nixpkgs: [hello]
+            }
+        }
+    }
+}
+
 def currents-path [] {
     ([$env.HOME .envil currents.nuon] | path join)
 }
@@ -26,13 +38,19 @@ export def get-state [statedir --should-exist]: nothing -> record {
     mut state = try {
         open $statefile
     } catch {
-        # print $"No envil state file found. Generating ($statefile)"
-        let defstate = {
-            inputs: $nixpkgs_input
-            envs: {basic: {}}
-        }
+        print $"(ansi grey)No envil state file found. Generating (ansi yellow)($statefile)(ansi reset)"
         $defstate | save $statefile
         $defstate
+    }
+    
+    if ($env.JSON_VALIDATOR? != null) {
+        try {
+            let schema_path = [($env.CURRENT_FILE | path dirname) envil-state-schema.json] | path join
+            run-external $env.JSON_VALIDATOR $schema_path $statefile
+        } catch {
+            print $"(ansi red)($statefile) is not a valid envil state file. See validator errors above(ansi reset)"
+            error make {msg: "Failed to validate state file"}
+        }
     }
     
     let includes = $state.includes?
