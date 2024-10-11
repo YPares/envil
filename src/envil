@@ -7,55 +7,52 @@ def main [] {
     help main
 }
 
-def select-envname [envname state --verb="use"] {
-    let envname = if $envname == "" {
-        $state.envs | transpose name desc | flatten | select name description? |
-        update description {|e| $"($e.name) (ansi grey)\(($e.description))(ansi reset)"} | sort-by -i name |
-        input list -d description -f $"Select the env \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb):" |
-        get name
-    } else {
-        $envname
-    }
-    if $envname in ["default"] {
-        error make {msg: $"`($envname)' is a reserved name, please rename the environment"}
-    }
-    $envname
+def select-envnames [multiple state --verb="use"] {
+    let prompt = $"Select the env \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb):"
+    let prompt_multi = $"Select the envs \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb) \(space to select):"
+    $state.envs | transpose name desc | flatten | select name description? |
+    update description {|e| $"($e.name) (ansi grey)\(($e.description))(ansi reset)"} | sort-by -i name |
+    if $multiple {input list -d description -m $prompt_multi} else {input list -d description -f $prompt | [$in]} |
+    get name
 }
 
 # Print out the flake that will generate the <envname> environment
 def "main flake" [
-    envname = "" # The name of the env to generate a flake for
+    --multiple (-m) # Whether to merge multiple environments
     --statedir (-d) = "" # Where to read the envil state from
     --systems (-s): list<string> = []
     # Which systems should this flake build for. The flake will use `nixpkgs.lib.systems.flakeExposed' if <systems> is left empty
 ] {
     let state = get-state $statedir
-    let envname = select-envname $envname $state --verb "generate a flake from"
+    let envname = select-envnames $multiple $state --verb "generate a flake from"
     set-currents --statedir $state.statedir
     generate-flake $envname $state $systems
 }
 
-def write-flake [envname state] {
-    let flakepath = [$state.statedir env-flakes $envname] | path join
+def write-flake [envnames state] {
+    let flakedir = $envnames | str join "+"
+    let flakepath = [$state.statedir env-flakes $flakedir] | path join
     mkdir $flakepath
-    generate-flake $envname $state | save -rf ([$flakepath flake.nix] | path join)
+    generate-flake $envnames $state | save -rf ([$flakepath flake.nix] | path join)
     $flakepath
 }
 
 # Start a subshell containing <envname>, or run a command in this subshell
-def --wrapped "main shell" [
-    envname: string = "" # The environment to open in a subshell
+def "main shell" [
+    --multiple (-m) # Whether to merge multiple environments
     --statedir (-d) = "" # Where to read the envil state from and write the temporary flake.nix
-    ...cmd # The command to run and its args
 ] {
+    if ($env.SHELL_ENV? != null) {
+        error make {msg: "Nested subshells are not supported"}
+    }
     let state = get-state $statedir
-    let envname = select-envname $envname $state --verb "use in the subshell"
-    let flakepath = write-flake $envname $state
+    let envnames = select-envnames $multiple $state --verb "use in the subshell"
+    let flakepath = write-flake $envnames $state
+    let envname = $envnames | str join "+"
     print $"(ansi grey)Starting a subshell with env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
-    let args = if ($cmd | is-empty) {[]} else {["-c"] | append $cmd}
     set-currents --statedir $state.statedir
     try {
-        SHELL_ENV=$envname ^nix shell $"path:($flakepath)" ...$args
+        SHELL_ENV=$envname ^nix shell $"path:($flakepath)"
     } catch {
         print $"(ansi grey)Last subshell command exited with (ansi yellow)($env.LAST_EXIT_CODE)(ansi reset)"
     }
@@ -63,13 +60,14 @@ def --wrapped "main shell" [
 
 # Apply the selected environment, ie. switch the bins in `$HOME/.envil/current/bin' to those of <envname>
 def "main switch" [
-    envname: string = "" # The environment to switch to
+    --multiple (-m) # Whether to activate multiple environments
     --statedir (-d) = "" # Where to read the envil state from and write the temporary flake.nix
 ] {
     let state = get-state $statedir
-    let envname = select-envname $envname $state --verb "switch to"
-    let flakepath = write-flake $envname $state
+    let envnames = select-envnames $multiple $state --verb "switch to"
+    let flakepath = write-flake $envnames $state
     ^nix build $"path:($flakepath)" -o ([$env.HOME .envil current] | path join)
+    let envname = $envnames | str join "+"
     set-currents --envname $envname --statedir $state.statedir
     print $"(ansi grey)Switched to env (ansi yellow)`($envname)'(ansi reset)"
 }
@@ -98,8 +96,7 @@ def "main checkpath" [
 }
 
 # Get the current environment, ie. the last environment the user switched to, and the env activated in a subshell (if any)
-def "main current" [
-] {
+def "main current" [] {
     let currents = get-currents
     if ($currents | is-empty) {
         print $"(ansi yellow)No activated env and no known statedir(ansi reset)"
@@ -114,7 +111,7 @@ def "main current" [
     }
     if ($env.SHELL_ENV? != null) {
         print $"- Env in this subshell: (ansi yellow)`($env.SHELL_ENV)'(ansi reset)"
-        let binlist = $"($env.PATH | where {str ends-with $"($env.SHELL_ENV)-env/bin"} | get 0 | ansi strip | ls_or_empty $in | sort -i)"
+        let binlist = $"($env.PATH | where {str ends-with "envil-current-env/bin"} | ansi strip | each {ls_or_empty $in} | flatten | sort -i)"
         print $"  | bins: ($binlist)"
     }
 }
@@ -123,20 +120,24 @@ def "main current" [
 #
 # This will NOT rebuild the environment, you need to do an `envil switch/shell' again afterwards
 def "main update" [
-    envname: string = "" # The environment whose flake.lock should be updated
+    envname_str: string = "" # The environment whose flake.lock should be updated
     --statedir (-d) = "" # Where to read the envil state and look for flake.nix/lock files
 ] {
     let state = get-state $statedir
-    let envname = select-envname $envname $state --verb "update"
-    let flakepath = write-flake $envname $state
+    let envnames = if ($envname_str == "") {
+        select-envnames false $state --verb "update"
+    } else {
+        $envname_str | split row "+"
+    }
+    let flakepath = write-flake $envnames $state
     try {
-        ^nix flake update --flake $"path:($flakepath)"
+        ^nix flake update --flake $"path:($flakepath)" err> /dev/null
     } catch {
         # We may be on an older version of nix where the --flake arg does not exist:
         ^nix flake update $"path:($flakepath)"
     }
     set-currents --statedir $state.statedir
-    print $"Updated flake.lock for env (ansi yellow)`($envname)'(ansi reset)"
+    print $"Updated flake.lock for env (ansi yellow)`($envname_str)'(ansi reset)"
 }
 
 # Deactivate any env that we have switched to (envil adds nothing more to the PATH)
@@ -149,6 +150,6 @@ def "main deactivate" [] {
         print $"(ansi yellow)No env was activated(ansi reset)"
     }
     try {
-        print $"(ansi grey)Env (ansi yellow)`($currents.env)'(ansi grey) has been deactivated(ansi reset)"
+        print $"(ansi grey)Env (ansi yellow)`($currents.env)'(ansi grey) env has been deactivated(ansi reset)"
     }
 }

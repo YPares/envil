@@ -40,8 +40,6 @@ envs:
         - kubernetes-helm
         - jsonnet
   nushell:
-    extends:
-      - vcs
     contents:
       nushellWith:
         - nushellWithExtras

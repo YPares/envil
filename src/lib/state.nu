@@ -70,8 +70,8 @@ export def get-state [statedir --should-exist]: nothing -> record {
 }
 
 export def set-currents [
-    --envname = null
-    --statedir = null
+    --envname: any = null
+    --statedir: any = null
 ] {
     mut currents = get-currents
     if ($envname != null) {
