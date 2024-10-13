@@ -24,9 +24,9 @@ def "main flake" [
     # Which systems should this flake build for. The flake will use `nixpkgs.lib.systems.flakeExposed' if <systems> is left empty
 ] {
     let state = get-state $statedir
-    let envname = select-envnames $multiple $state --verb "generate a flake from"
+    let envnames = select-envnames $multiple $state --verb "generate a flake from"
     set-currents --statedir $state.statedir
-    generate-flake $envname $state $systems
+    generate-flake $envnames $state $systems
 }
 
 def write-flake [envnames state] {

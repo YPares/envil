@@ -21,6 +21,7 @@
             "type": "object",
             "additionalProperties": {
               "type": "object",
+              "minProperties": 1,
               "additionalProperties": {
                 "type": "string"
               }
@@ -33,7 +34,7 @@
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
-        "^[^+]+$": {
+        "^[A-Za-z][A-Za-z0-9\\-_]*$": {
           "type": "object",
           "properties": {
             "description": {
@@ -49,7 +50,9 @@
                       "type": "string"
                     },
                     {
-                      "type": "object"
+                      "type": "object",
+                      "minProperties": 1,
+                      "maxProperties": 1
                     }
                   ]
                 }
