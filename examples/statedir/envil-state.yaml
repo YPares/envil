@@ -18,8 +18,7 @@ inputs: # 'inputs' are "package sources" in nix flakes parlance
       # has a 'nixpkgs' input, that we ask to follow our own 'pkgs' input declared just above,
       # instead of using its own locked version
 envs:
-  nix: # This declares and environment, and names it (you can use any name
-    # except 'default', which is reserved)
+  nix: # This declares an environment and names it
     contents: # Which packages should be provided by the environment when it is activated
       pkgs: # A package source (from 'inputs')
         - nil # Which packages to use from that source
@@ -32,10 +31,10 @@ envs:
     extends: # This is how an environment "inherits" from others, so you
       # don't have to repeat yourself
       - nix
-      - vcs
     contents:
       pkgs:
         - kind
+        - k9s
         - kubectl
         - kubernetes-helm
         - jsonnet
@@ -61,7 +60,6 @@ envs:
     description: "Tools for JS & TS"
     contents:
       pkgs:
-        - nodejs-slim_22
         - nodePackages: # A shortcut (every package nested here is under the "nodePackages" attr)
             - npm
             - yarn

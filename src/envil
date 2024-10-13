@@ -10,10 +10,21 @@ def main [] {
 def select-envnames [multiple state --verb="use"] {
     let prompt = $"Select the env \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb):"
     let prompt_multi = $"Select the envs \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb) \(space to select):"
-    $state.envs | transpose name desc | flatten | select name description? |
-    update description {|e| $"($e.name) (ansi grey)\(($e.description))(ansi reset)"} | sort-by -i name |
-    if $multiple {input list -d description -m $prompt_multi} else {input list -d description -f $prompt | [$in]} |
-    get name
+    
+    $state.envs |
+        transpose name desc |
+        flatten |
+        select name description? |
+        update description {|e|
+            $"($e.name) (ansi grey)\(($e.description))(ansi reset)"
+        } |
+        sort-by -i name |
+        if $multiple {
+            input list -d description -m $prompt_multi
+        } else {
+            input list -d description -f $prompt | [$in]
+        } |
+        get name
 }
 
 # Print out the flake that will generate the <envname> environment
@@ -52,7 +63,7 @@ def "main shell" [
     print $"(ansi grey)Starting a subshell with env (ansi yellow)`($envname)'(ansi grey)...(ansi reset)"
     set-currents --statedir $state.statedir
     try {
-        SHELL_ENV=$envname ^nix shell $"path:($flakepath)"
+        SHELL_ENV=$envname ^nix shell $"path:($flakepath)#__current"
     } catch {
         print $"(ansi grey)Last subshell command exited with (ansi yellow)($env.LAST_EXIT_CODE)(ansi reset)"
     }
@@ -66,7 +77,7 @@ def "main switch" [
     let state = get-state $statedir
     let envnames = select-envnames $multiple $state --verb "switch to"
     let flakepath = write-flake $envnames $state
-    ^nix build $"path:($flakepath)" -o ([$env.HOME .envil current] | path join)
+    ^nix build $"path:($flakepath)#__current" -o ([~ .envil current] | path join | path expand -n)
     let envname = $envnames | str join "+"
     set-currents --envname $envname --statedir $state.statedir
     print $"(ansi grey)Switched to env (ansi yellow)`($envname)'(ansi reset)"
@@ -106,7 +117,7 @@ def "main current" [] {
     }
     if ($currents.env? != null) {
         print $"- Activated env: (ansi yellow)`($currents.env)'(ansi reset)"
-        let binlist = $"(ls_or_empty ([$env.HOME .envil current bin] | path join) | sort -i)"
+        let binlist = $"(ls_or_empty ([~ .envil current bin] | path join | path expand -n) | sort -i)"
         print $"  | bins: ($binlist)"
     }
     if ($env.SHELL_ENV? != null) {
@@ -145,7 +156,7 @@ def "main deactivate" [] {
     let currents = get-currents
     try {
         erase-current-env
-        rm ([$env.HOME .envil current] | path join)
+        rm ([~ .envil current] | path join | path expand -n)
     } catch {
         print $"(ansi yellow)No env was activated(ansi reset)"
     }

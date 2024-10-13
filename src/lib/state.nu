@@ -13,7 +13,7 @@ const defstate = {
 }
 
 def currents-path [] {
-    ([$env.HOME .envil currents.nuon] | path join)
+    ([~ .envil currents.nuon] | path join | path expand -n)
 }
 
 # Reads the state from the statedir.
