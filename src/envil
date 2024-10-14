@@ -101,7 +101,7 @@ def do_switch [envstack state] {
     set-currents --envstack $envstack --statedir $state.statedir
 }
 
-# Switch the entire stack to the selected environment
+# Switch the entire stack to the selected environment(s)
 def "main switch" [
     --multiple (-m) # Whether to activate multiple environments or not
     --statedir (-d): path = "" # Where to read the envil state from and write the temporary flake.nix
@@ -112,7 +112,7 @@ def "main switch" [
     print $"(ansi grey)Switched to (ansi yellow)`($envnames | str join "+")'(ansi reset)"
 }
 
-# Add a new environment on top of the stack, so its tools can be in the PATH too
+# Add a new environment on top of the stack, so its bins are put in the PATH too
 def "main add" [
     envname: string = "" # Which env to stack on
     --statedir (-d): path = "" # Where to read the envil state from and write the temporary flake.nix
@@ -128,7 +128,7 @@ def "main add" [
     print $"(ansi grey)Stacked env (ansi yellow)`($envname)'(ansi reset)"
 }
 
-# Remove the environment on top of the stack
+# Remove the top environment of the stack
 def "main pop" [] {
     let state = get-state ""
     let stack = (get-currents).envstack? | or-else []
@@ -149,7 +149,7 @@ def ls_or_empty [folder] {
     }
 }
 
-# Report if some bins are present several times in your PATH, but pointing to different actual executables, thus creating an ambiguity
+# Report if some bins are present several times in your PATH
 def "main checkpath" [
     --all (-a) # Check for all bins, not just those in the nix store
 ] {
@@ -164,8 +164,8 @@ def "main checkpath" [
     }
 }
 
-# Get the current environment, ie. the last environment the user switched to, and the env activated in a subshell (if any)
-def "main current" [] {
+# Get the current env stack, the bins they expose, and the env activated in a subshell (if any)
+def "main status" [] {
     let currents = get-currents
     if ($currents | is-empty) {
         print $"(ansi yellow)No activated env and no known statedir(ansi reset)"
@@ -175,11 +175,11 @@ def "main current" [] {
     }
     print $"- Env\(s) on the stack: (ansi yellow)($currents.envstack? | or-else [])(ansi reset)"
     let binlist = $"(ls_or_empty ([~ .envil current bin] | path join | path expand -n) | sort -i)"
-    print $"  | bins: ($binlist)"
+    print $"  | Bins: ($binlist)"
     if ($env.SHELL_ENV? != null) {
         print $"- Env in this subshell: (ansi yellow)`($env.SHELL_ENV)'(ansi reset)"
         let binlist = $"($env.PATH | where {str ends-with "-envil/bin"} | ansi strip | each {ls_or_empty $in} | flatten | sort -i)"
-        print $"  | bins: ($binlist)"
+        print $"  | Bins: ($binlist)"
     }
 }
 
@@ -194,7 +194,7 @@ def do_update [flakepath] {
 
 # Update an environment's inputs (package sources), and update its associated flake.lock file
 #
-# This will NOT rebuild the environment, you need to do an `envil switch/shell' again afterwards
+# This will NOT rebuild the environment, you need to do an `envil switch' again afterwards
 def "main update" [
     envname: string = "" # The environment whose flake.lock should be updated
     --statedir (-d): path = "" # Where to read the envil state and look for flake.nix/lock files
@@ -211,7 +211,7 @@ def "main update" [
     print $"Updated flake.lock for env (ansi yellow)`($envname)'(ansi reset)"
 }
 
-# Deactivate any env that we have switched to (envil adds nothing more to the PATH)
+# Pop all the envs added to the stack
 def "main deactivate" [] {
     let currents = get-currents
     try {
