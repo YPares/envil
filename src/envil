@@ -32,6 +32,8 @@ Use <spacebar> to \(de)select one, <a> to \(de)select all"
 def "main flake" [
     envname: string = ""
     --statedir (-d): path = "" # Where to read the envil state from
+                               #
+                               # If empty, will use the statedir of the current env stack
     --systems (-s): list<string> = []
     # Which systems should this flake build for. The flake will use `nixpkgs.lib.systems.flakeExposed' if <systems> is left empty
 ] {
@@ -41,15 +43,15 @@ def "main flake" [
     } else {
         $envname
     }
-    set-currents --statedir $state.statedir
     generate-flake $envname $state $systems
 }
 
-def write-flakes [envnames state] {
-    let flakes = $envnames | each {|envname|
+def write-flakes [env_stack state] {
+    let flakes = $env_stack | each {|envname|
         let flakepath = [$state.statedir env-flakes $envname] | path join
+        let flake = generate-flake $envname $state
         mkdir $flakepath
-        generate-flake $envname $state | save -rf ([$flakepath flake.nix] | path join)
+        $flake | save -rf ([$flakepath flake.nix] | path join)
         if (not ([$flakepath flake.lock] | path join | path exists)) {
             do_update $flakepath
         }
@@ -58,27 +60,31 @@ def write-flakes [envnames state] {
     if ($flakes | length) == 1 {
         $flakes.0.flakepath
     } else {
+        # Generate a temporary flake.nix that will create an env that merges those of the stack:
         let m_flakepath = [$state.statedir .tmp-flake] | path join
-        rm -rf $m_flakepath
-        mkdir $m_flakepath
         let m_state = {
             inputs: ($flakes | each {{$in.envname: $"path:($in.flakepath)"}} | into record)
             envs: {
                 multienv: {
-                    contents: ($envnames | each {{$in: [__current]}} | into record)
+                    contents: ($env_stack | each {{$in: [__current]}} | into record)
                 }
             }
             statedir: $state.statedir
         }
-        generate-flake "multienv" $m_state | save -rf ([$m_flakepath flake.nix] | path join)
+        let flake = generate-flake "multienv" $m_state
+        rm -rf $m_flakepath
+        mkdir $m_flakepath
+        $flake | save -rf ([$m_flakepath flake.nix] | path join)
         $m_flakepath
     }
 }
 
-# Start a subshell containing <envname>, or run a command in this subshell
+# Temporarily activate an env, by starting a subshell containing <envname>, or run a command in this subshell
 def "main shell" [
     --multiple (-m) # Whether to merge multiple environments
     --statedir (-d): path = "" # Where to read the envil state from and write the temporary flake.nix
+                               #
+                               # If empty, will use the statedir of the current env stack
 ] {
     if ($env.SHELL_ENV? != null) {
         error make {msg: "Nested subshells are not supported"}
@@ -87,7 +93,6 @@ def "main shell" [
     let envnames = select-envnames $multiple $state --verb "use in the subshell"
     let flakepath = write-flakes $envnames $state
     print $"(ansi grey)Starting a subshell with env\(s) (ansi yellow)($envnames)(ansi grey)...(ansi reset)"
-    set-currents --statedir $state.statedir
     let merged_name = $envnames | str join "+"
     try {
         SHELL_ENV=$merged_name ^nix shell $"path:($flakepath)#__current"
@@ -99,28 +104,31 @@ def "main shell" [
 def do_switch [envstack state] {
     let flakepath = write-flakes $envstack $state
     ^nix build $"path:($flakepath)#__current" -o ([~ .envil current] | path join | path expand -n)
-    set-currents --envstack $envstack --statedir $state.statedir
+    set-currents --envstack $envstack
 }
 
-# Switch the entire stack to the selected environment(s)
+# Switch the entire stack at once, potentially changing the current statedir
 def "main switch" [
     --multiple (-m) # Whether to activate multiple environments or not
-    --statedir (-d): path = "" # Where to read the envil state from and write the temporary flake.nix
+    --statedir (-d): path = "" # Where to read the envil state from and write the temporary flake.nix.
+                               # 
+                               # Will be recorded as the target for subsequent usages of `envil add'/`envil pop'.
+                               # If empty, will keep using the same statedir as the current env stack
 ] {
     let state = get-state $statedir
     let new_stack = select-envnames $multiple $state --verb "switch to"
     do_switch $new_stack $state
-    print $"(ansi grey)Switched to env\(s) (ansi yellow)($new_stack)(ansi reset)"
+    set-currents --statedir $state.statedir
+    print $"(ansi grey)Switched to statedir (ansi yellow)`($state.statedir)'(ansi grey), using env\(s) (ansi yellow)($new_stack)(ansi reset)"
 }
 
 # Add a new environment on top of the stack, so its bins are put in the PATH too
 def "main add" [
-    envname: string = "" # Which env to stack on
-    --statedir (-d): path = "" # Where to read the envil state from and write the temporary flake.nix
+    envname: string = "" # Which env to add on top of the stack
 ] {
-    let state = get-state $statedir
+    let state = get-state ""
     let envname = if ($envname == "") {
-        select-envnames false $state --verb "stack on" | get 0
+        select-envnames false $state --verb "stack" | get 0
     } else {
         $envname
     }
@@ -130,8 +138,8 @@ def "main add" [
 
 # Remove the top environment(s) of the stack
 def "main pop" [
-    num: int = 1 # How many top envs to remove
-    --all (-a) # Pop the entire stack (ignoring num)
+    num: int = 1 # How many envs to remove
+    --all (-a) # Pop the entire stack (ignoring (num) parameter)
 ] {
     let state = get-state ""
     let stack = (get-currents).envstack
@@ -172,10 +180,12 @@ def "main checkpath" [
 def "main status" [] {
     let currents = get-currents
     if ($currents | is-empty) {
-        print $"(ansi yellow)No activated env and no known statedir(ansi reset)"
+        print $"(ansi yellow)No currents envs and/or statedir(ansi reset)"
     }
     if ($currents.statedir? != null) {
-        print $"- Last statedir used: (ansi yellow)`($currents.statedir)'(ansi reset)"
+        print $"- Statedir used by current stack: (ansi yellow)`($currents.statedir)'(ansi reset)"
+    } else {
+        print $"- No current statedir. Run (ansi yellow)`envil switch -d <statedir_path>'(ansi reset) to set it"
     }
     print $"- Env\(s) on the stack: (ansi yellow)($currents.envstack)(ansi reset)"
     let binlist = $"(ls_or_empty ([~ .envil current bin] | path join | path expand -n) | sort -i)"
@@ -196,21 +206,25 @@ def do_update [flakepath] {
     }
 }
 
-# Update an environment's inputs (package sources), update its associated flake.lock file
+# Update an environment's inputs (package sources) and update its associated flake.lock file
 #
-# Re-loads the current stack to take into account potential changes
-#
-# If that env is used in a subshell, you should exit and restart it
+# Re-loads the current stack to take into account potential changes.
+# If that env is used in a subshell, you should exit and restart it.
 def "main update" [
     --multiple (-m) # Whether to select several envs to update
     --statedir (-d): path = "" # Where to read the envil state and look for flake.nix/lock files
+                               #
+                               # If empty, will use the statedir of the current env stack
+    --no-reload (-R) # Do not reload the current env stack
 ] {
     let state = get-state $statedir
     let envnames = select-envnames $multiple $state --verb "update"
     let flakepath = write-flakes $envnames $state
     do_update $flakepath
     print $"(ansi grey)Updated flake.lock for env\(s) (ansi yellow)($envnames)(ansi reset)"
-    let stack = (get-currents).envstack
-    do_switch $stack $state
-    print $"(ansi grey)Refreshed current stack: (ansi yellow)($stack)(ansi reset)"
+    if (not $no_reload) {
+        let stack = (get-currents).envstack
+        do_switch $stack $state
+        print $"(ansi grey)Reloaded current stack: (ansi yellow)($stack)(ansi reset)"
+    }
 }
