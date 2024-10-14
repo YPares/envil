@@ -58,7 +58,7 @@ def write-flakes [envnames state] {
     if ($flakes | length) == 1 {
         $flakes.0.flakepath
     } else {
-        let m_flakepath = [$state.statedir multienv-flake] | path join
+        let m_flakepath = [$state.statedir .tmp-flake] | path join
         rm -rf $m_flakepath
         mkdir $m_flakepath
         let m_state = {
