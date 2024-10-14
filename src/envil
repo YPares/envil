@@ -9,7 +9,8 @@ def main [] {
 
 def select-envnames [multiple state --verb="use"] {
     let prompt = $"Select the env \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb):"
-    let prompt_multi = $"Select the envs \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb) \(space to select):"
+    let prompt_multi = $"Select the envs \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb).
+Use <spacebar> to \(de)select one, <a> to \(de)select all"
     
     $state.envs |
         transpose name desc |
@@ -85,9 +86,9 @@ def "main shell" [
     let state = get-state $statedir
     let envnames = select-envnames $multiple $state --verb "use in the subshell"
     let flakepath = write-flakes $envnames $state
-    let merged_name = $envnames | str join "+"
-    print $"(ansi grey)Starting a subshell with env (ansi yellow)`($merged_name)'(ansi grey)...(ansi reset)"
+    print $"(ansi grey)Starting a subshell with env\(s) (ansi yellow)($envnames)(ansi grey)...(ansi reset)"
     set-currents --statedir $state.statedir
+    let merged_name = $envnames | str join "+"
     try {
         SHELL_ENV=$merged_name ^nix shell $"path:($flakepath)#__current"
     } catch {
@@ -97,7 +98,7 @@ def "main shell" [
 
 def do_switch [envstack state] {
     let flakepath = write-flakes $envstack $state
-    ^nix build $"path:($flakepath)#__current" -o ([~ .envil current] | path join | path expand -n) e> /dev/null
+    ^nix build $"path:($flakepath)#__current" -o ([~ .envil current] | path join | path expand -n)
     set-currents --envstack $envstack --statedir $state.statedir
 }
 
@@ -107,9 +108,9 @@ def "main switch" [
     --statedir (-d): path = "" # Where to read the envil state from and write the temporary flake.nix
 ] {
     let state = get-state $statedir
-    let envnames = select-envnames $multiple $state --verb "switch to"
-    do_switch $envnames $state
-    print $"(ansi grey)Switched to (ansi yellow)`($envnames | str join "+")'(ansi reset)"
+    let new_stack = select-envnames $multiple $state --verb "switch to"
+    do_switch $new_stack $state
+    print $"(ansi grey)Switched to env\(s) (ansi yellow)($new_stack)(ansi reset)"
 }
 
 # Add a new environment on top of the stack, so its bins are put in the PATH too
@@ -118,13 +119,12 @@ def "main add" [
     --statedir (-d): path = "" # Where to read the envil state from and write the temporary flake.nix
 ] {
     let state = get-state $statedir
-    let stack = (get-currents).envstack? | or-else []
     let envname = if ($envname == "") {
         select-envnames false $state --verb "stack on" | get 0
     } else {
         $envname
     }
-    do_switch ($stack ++ [$envname]) $state
+    do_switch ((get-currents).envstack ++ [$envname]) $state
     print $"(ansi grey)Added env (ansi yellow)`($envname)'(ansi grey) on top of the stack(ansi reset)"
 }
 
@@ -134,7 +134,7 @@ def "main pop" [
     --all (-a) # Pop the entire stack (ignoring num)
 ] {
     let state = get-state ""
-    let stack = (get-currents).envstack? | or-else []
+    let stack = (get-currents).envstack
     let num = if $all {$stack | length} else {$num}
     let lasts = $stack | last $num
     if $lasts == [] {
@@ -177,7 +177,7 @@ def "main status" [] {
     if ($currents.statedir? != null) {
         print $"- Last statedir used: (ansi yellow)`($currents.statedir)'(ansi reset)"
     }
-    print $"- Env\(s) on the stack: (ansi yellow)($currents.envstack? | or-else [])(ansi reset)"
+    print $"- Env\(s) on the stack: (ansi yellow)($currents.envstack)(ansi reset)"
     let binlist = $"(ls_or_empty ([~ .envil current bin] | path join | path expand -n) | sort -i)"
     print $"  | Bins: ($binlist)"
     if ($env.SHELL_ENV? != null) {
@@ -196,21 +196,21 @@ def do_update [flakepath] {
     }
 }
 
-# Update an environment's inputs (package sources), and update its associated flake.lock file
+# Update an environment's inputs (package sources), update its associated flake.lock file
 #
-# This will NOT rebuild the environment, you need to do an `envil switch' again afterwards
+# Re-loads the current stack to take into account potential changes
+#
+# If that env is used in a subshell, you should exit and restart it
 def "main update" [
-    envname: string = "" # The environment whose flake.lock should be updated
+    --multiple (-m) # Whether to select several envs to update
     --statedir (-d): path = "" # Where to read the envil state and look for flake.nix/lock files
 ] {
     let state = get-state $statedir
-    let envname = if ($envname == "") {
-        select-envnames false $state --verb "update" | get 0
-    } else {
-        $envname
-    }
-    let flakepath = write-flakes [$envname] $state
+    let envnames = select-envnames $multiple $state --verb "update"
+    let flakepath = write-flakes $envnames $state
     do_update $flakepath
-    set-currents --statedir $state.statedir
-    print $"(ansi grey)Updated flake.lock for env (ansi yellow)`($envname)'(ansi reset)"
+    print $"(ansi grey)Updated flake.lock for env\(s) (ansi yellow)($envnames)(ansi reset)"
+    let stack = (get-currents).envstack
+    do_switch $stack $state
+    print $"(ansi grey)Refreshed current stack: (ansi yellow)($stack)(ansi reset)"
 }

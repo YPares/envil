@@ -85,12 +85,8 @@ export def set-currents [
 
 export def get-currents [] {
     try {
-        open (currents-path)
+        open (currents-path) | upsert envstack {or-else []}
     } catch {
         {}
     }
-}
-
-export def erase-current-env [] {
-    get-currents | collect | update envstack [] | save -f (currents-path)
 }
