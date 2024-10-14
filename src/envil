@@ -97,7 +97,7 @@ def "main shell" [
 
 def do_switch [envstack state] {
     let flakepath = write-flakes $envstack $state
-    ^nix build $"path:($flakepath)#__current" -o ([~ .envil current] | path join | path expand -n)
+    ^nix build $"path:($flakepath)#__current" -o ([~ .envil current] | path join | path expand -n) e> /dev/null
     set-currents --envstack $envstack --statedir $state.statedir
 }
 
@@ -125,19 +125,23 @@ def "main add" [
         $envname
     }
     do_switch ($stack ++ [$envname]) $state
-    print $"(ansi grey)Stacked env (ansi yellow)`($envname)'(ansi reset)"
+    print $"(ansi grey)Added env (ansi yellow)`($envname)'(ansi grey) on top of the stack(ansi reset)"
 }
 
-# Remove the top environment of the stack
-def "main pop" [] {
+# Remove the top environment(s) of the stack
+def "main pop" [
+    num: int = 1 # How many top envs to remove
+    --all (-a) # Pop the entire stack (ignoring num)
+] {
     let state = get-state ""
     let stack = (get-currents).envstack? | or-else []
-    let last = try { $stack | last } catch { null }
-    if $last == null {
-        print $"(ansi grey)No env is on the stack(ansi reset)"
+    let num = if $all {$stack | length} else {$num}
+    let lasts = $stack | last $num
+    if $lasts == [] {
+        print $"(ansi grey)Nothing to pop(ansi reset)"
     } else {
-        do_switch ($stack | drop 1) $state
-        print $"(ansi grey)Popped env (ansi yellow)`($last)'(ansi reset)"
+        do_switch ($stack | drop $num) $state
+        print $"(ansi grey)Popped (ansi yellow)($lasts)(ansi grey) from the stack(ansi reset)"
     }
 }
 
@@ -164,7 +168,7 @@ def "main checkpath" [
     }
 }
 
-# Get the current env stack, the bins they expose, and the env activated in a subshell (if any)
+# Get the current env stack and the bins it puts in the PATH, and the env activated in a subshell (if any)
 def "main status" [] {
     let currents = get-currents
     if ($currents | is-empty) {
@@ -208,19 +212,5 @@ def "main update" [
     let flakepath = write-flakes [$envname] $state
     do_update $flakepath
     set-currents --statedir $state.statedir
-    print $"Updated flake.lock for env (ansi yellow)`($envname)'(ansi reset)"
-}
-
-# Pop all the envs added to the stack
-def "main deactivate" [] {
-    let currents = get-currents
-    try {
-        erase-current-env
-        rm ([~ .envil current] | path join | path expand -n)
-    } catch {
-        print $"(ansi yellow)No env was activated(ansi reset)"
-    }
-    try {
-        print $"(ansi grey)Env (ansi yellow)`($currents.env)'(ansi grey) env has been deactivated(ansi reset)"
-    }
+    print $"(ansi grey)Updated flake.lock for env (ansi yellow)`($envname)'(ansi reset)"
 }
