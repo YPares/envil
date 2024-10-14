@@ -1,7 +1,7 @@
 use nix-printer.nu *
 use state.nu nixpkgs_input
 
-def or-else [defval] {
+export def or-else [defval] {
     if $in == null {$defval} else {$in}
 }
 

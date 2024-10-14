@@ -70,12 +70,12 @@ export def get-state [statedir --should-exist]: nothing -> record {
 }
 
 export def set-currents [
-    --envname: any = null
+    --envstack: any = null
     --statedir: any = null
 ] {
     mut currents = get-currents
-    if ($envname != null) {
-        $currents.env = $envname
+    if ($envstack != null) {
+        $currents.envstack = $envstack
     }
     if ($statedir != null) {
         $currents.statedir = $statedir
@@ -92,5 +92,5 @@ export def get-currents [] {
 }
 
 export def erase-current-env [] {
-    get-currents | collect | reject env | save -f (currents-path)
+    get-currents | collect | update envstack [] | save -f (currents-path)
 }
