@@ -142,16 +142,16 @@ def "main switch" [
 
 # Add new envs on top of the stack
 def "main add" [
-    --unique (-u) # Whether to select just one environment (in which case the env picker will come with a searchbar)
+    --unique (-u) # Whether to select just one env (in which case the env picker will come with a searchbar)
     ...envnames # Envs to activate (will open a picker if none is given)
 ] {
     let state = get-state ""
-    let envnames = select-envnames $envnames $unique $state --verb "stack"
+    let envnames = select-envnames $envnames $unique $state --verb "add"
     do_switch ((get-currents).envstack ++ $envnames) $state
-    print $"(ansi grey)Added env\(s) (ansi yellow)($envnames)(ansi grey) on top of the stack(ansi reset)"
+    print $"(ansi grey)Added env\(s) (ansi yellow)($envnames)(ansi grey) to the stack(ansi reset)"
 }
 
-# Remove the top env(s) of the stack
+# Remove the top env(s) from the stack
 def "main pop" [
     num: int = 1 # How many envs to remove
     --all (-a) # Pop the entire stack (ignoring (num) parameter)
@@ -166,6 +166,18 @@ def "main pop" [
         do_switch ($stack | drop $num) $state
         print $"(ansi grey)Removed (ansi yellow)($lasts)(ansi grey) from the stack(ansi reset)"
     }
+}
+
+# Remove some envs from the stack (by name)
+def "main rm" [
+    --unique (-u) # Whether to select just one env (in which case the env picker will come with a searchbar)
+    ...envnames # Envs to remove (will open a picker if none is given)
+] {
+    let state = get-state ""
+    let envnames = select-envnames $envnames $unique $state --verb "remove"
+    let new_stack = (get-currents).envstack | where {not ($in in $envnames)}
+    do_switch $new_stack $state
+    print $"(ansi grey)Removed (ansi yellow)($envnames)(ansi grey) from the stack(ansi reset)"
 }
 
 def ls_or_empty [folder] {
