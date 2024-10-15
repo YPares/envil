@@ -146,8 +146,9 @@ def "main add" [
     ...envnames # Envs to activate (will open a picker if none is given)
 ] {
     let state = get-state ""
-    let envnames = select-envnames $envnames $unique $state --verb "add"
-    do_switch ((get-currents).envstack ++ $envnames) $state
+    let stack = (get-currents).envstack
+    let envnames = select-envnames $envnames $unique ($state | update envs {reject ...$stack}) --verb "add"
+    do_switch ($stack ++ $envnames) $state
     print $"(ansi grey)Added env\(s) (ansi yellow)($envnames)(ansi grey) to the stack(ansi reset)"
 }
 
@@ -174,8 +175,9 @@ def "main rm" [
     ...envnames # Envs to remove (will open a picker if none is given)
 ] {
     let state = get-state ""
-    let envnames = select-envnames $envnames $unique $state --verb "remove"
-    let new_stack = (get-currents).envstack | where {not ($in in $envnames)}
+    let stack = (get-currents).envstack
+    let envnames = select-envnames $envnames $unique ($state | update envs {select ...$stack}) --verb "remove"
+    let new_stack = $stack | where {not ($in in $envnames)}
     do_switch $new_stack $state
     print $"(ansi grey)Removed (ansi yellow)($envnames)(ansi grey) from the stack(ansi reset)"
 }
