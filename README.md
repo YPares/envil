@@ -75,8 +75,8 @@ you can run the following:
 - `envil shell -d examples/statedir`: show all the envs defined in the example statedir and let you select some of these envs. Then open those envs in a subshell
 - `envil switch -d examples/statedir`: select a statedir (`-d`) and several environments in this statedir, and then replace the whole stack with them.
   Registers `examples/statedir` as the current statedir.
-- `envil add`: select an env to add to the stack of currently activated envs. Globally add to your `PATH` the executables it contains
-- `envil pop 2`: deactivate the last two envs added to the stack
+- `envil push`: select an env to add to the top of the env stack. Globally add to your `PATH` the executables it contains
+- `envil pop`: deactivate the last env added to the stack
 - `envil update`: update the flake.lock files for some environments, and reload the current stack
 - `envil status`: show the current statedir, the currently activated envs (with their bins), and (if any) the env activated in the current subshell
 
