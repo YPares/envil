@@ -4,7 +4,7 @@ use lib/gen-flake.nu *
 use lib/state.nu *
 
 def main [] {
-    help main
+    main show
 }
 
 def select-envnames [preselected unique state --verb="use"] {
@@ -118,10 +118,15 @@ def "main switch" [
                                # 
                                # Will be recorded as the target for subsequent usages of `envil add'/`envil pop'.
                                # If empty, will keep using the same statedir as the current stack
+    --reload (-r) # Reload the current stack
     ...envnames # Envs to activate (will open a picker if none is given)
 ] {
     let state = get-state $statedir
-    let new_stack = select-envnames $envnames $unique $state --verb "switch to"
+    let new_stack = if $reload {
+        (get-currents).envstack
+    } else {
+        select-envnames $envnames $unique $state --verb "switch to"
+    }
     do_switch $new_stack $state
     set-currents --statedir $state.statedir
     print $"(ansi grey)Switched to statedir (ansi yellow)`($state.statedir)'(ansi grey), using env\(s) (ansi yellow)($new_stack)(ansi reset)"
