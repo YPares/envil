@@ -69,7 +69,7 @@ def write-flakes [env_stack state] {
             inputs: ($flakes | each {{$in.envname: $"path:($in.flakepath)"}} | into record)
             envs: {
                 multienv: {
-                    contents: ($env_stack | each {{$in: [__current]}} | into record)
+                    contents: ($env_stack | each {{$in: [__selected]}} | into record)
                 }
             }
             statedir: $state.statedir
@@ -107,7 +107,7 @@ def "main shell" [
     }
     try {
         let nix_exe = (which nix).path.0
-        PATH=$new_path SHELL_ENV=$merged_name run-external $nix_exe shell $"path:($flakepath)#__current"
+        PATH=$new_path SHELL_ENV=$merged_name run-external $nix_exe shell $"path:($flakepath)#__selected"
     } catch {
         print $"(ansi grey)Last subshell command exited with (ansi yellow)($env.LAST_EXIT_CODE)(ansi reset)"
     }
@@ -115,7 +115,7 @@ def "main shell" [
 
 def do_switch [envstack state] {
     let flakepath = write-flakes $envstack $state
-    ^nix build $"path:($flakepath)#__current" -o ([~ .envil current] | path join | path expand -n)
+    ^nix build $"path:($flakepath)#__selected" -o ([~ .envil current] | path join | path expand -n)
     set-currents --envstack $envstack
 }
 

@@ -64,7 +64,7 @@ export def output-flake [envname systems nixpkgs_key inputs outputs] {
                          buildEnv (r (c "A function to make an environment")
                                      $"imp.($nixpkgs_key).buildEnv")
                          envs (r (c $"Each environment used by env ($envname)")
-                                 (rec2a ({__current: $"envs.($envname)"} | merge $outputs)))]
+                                 (rec2a ({__selected: $"envs.($envname)"} | merge $outputs)))]
                         envs))))))))
 }
 
