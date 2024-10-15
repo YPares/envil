@@ -1,90 +1,93 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YPares/envil/tree/master/src/envil-state-schema.json",
-  "title": "envil-state-schema",
-  "type": "object",
-  "properties": {
-    "includes": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "inputs": {
-      "type": "object",
-      "additionalProperties": {
-        "oneOf": [
-          {
-            "type": "string"
-          },
-          {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/YPares/envil/tree/master/src/envil-state-schema.json",
+    "title": "envil-state-schema",
+    "type": "object",
+    "properties": {
+        "includes": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "inputs": {
             "type": "object",
-            "additionalProperties": {
-              "type": "object",
-              "minProperties": 1,
-              "additionalProperties": {
-                "type": "string"
-              }
-            }
-          }
-        ]
-      }
-    },
-    "envs": {
-      "type": "object",
-      "additionalProperties": false,
-      "patternProperties": {
-        "^[A-Za-z][A-Za-z0-9\\-_]*$": {
-          "type": "object",
-          "properties": {
-            "description": {
-              "type": "string"
-            },
-            "contents": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "array",
-                "items": {
-                  "oneOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "object",
-                      "minProperties": 1,
-                      "maxProperties": 1
-                    }
-                  ]
+            "additionalProperties": false,
+            "patternProperties": {
+                "^[A-Za-z][A-Za-z0-9\\-_]*$": {
+                    "oneOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "object",
+                                "minProperties": 1,
+                                "additionalProperties": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    ]
                 }
-              }
-            },
-            "extends": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
             }
-          },
-          "anyOf": [
-            {
-              "required": [
-                "contents"
-              ]
-            },
-            {
-              "required": [
-                "extends"
-              ]
+        },
+        "envs": {
+            "type": "object",
+            "additionalProperties": false,
+            "patternProperties": {
+                "^[A-Za-z][A-Za-z0-9\\-_]*$": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string"
+                        },
+                        "contents": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                    "oneOf": [
+                                        {
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "minProperties": 1,
+                                            "maxProperties": 1
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "extends": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "anyOf": [
+                        {
+                            "required": [
+                                "contents"
+                            ]
+                        },
+                        {
+                            "required": [
+                                "extends"
+                            ]
+                        }
+                    ],
+                    "additionalProperties": false
+                }
             }
-          ],
-          "additionalProperties": false
         }
-      }
-    }
-  },
-  "required": [
-    "inputs",
-    "envs"
-  ],
-  "additionalProperties": false
+    },
+    "required": [
+        "inputs",
+        "envs"
+    ],
+    "additionalProperties": false
 }

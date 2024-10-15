@@ -88,6 +88,7 @@ def "main shell" [
     --statedir (-d): path = "" # Where to read the envil state from and write the temporary flake.nix
                                #
                                # If empty, will use the statedir of the current stack
+    --isolated (-i) # Whether to limit the PATH of the shell so it can only see the tools from the selected envs and standard UNIX paths
     ...envnames # Envs to activate (will open a picker if none is given)
 ] {
     if ($env.SHELL_ENV? != null) {
@@ -96,10 +97,17 @@ def "main shell" [
     let state = get-state $statedir
     let envnames = select-envnames $envnames $unique $state --verb "use in the subshell"
     let flakepath = write-flakes $envnames $state
-    print $"(ansi grey)Starting a subshell with env\(s) (ansi yellow)($envnames)(ansi grey)...(ansi reset)"
+    let isolated_bit = if $isolated {"an isolated"} else {"a"}
+    print $"(ansi grey)Starting ($isolated_bit) subshell with env\(s) (ansi yellow)($envnames)(ansi grey)...(ansi reset)"
     let merged_name = $envnames | str join "+"
+    let new_path = if $isolated {
+        [/usr/local/sbin, /usr/local/bin, /usr/sbin, /usr/bin, /sbin, /bin]
+    } else {
+        $env.PATH
+    }
     try {
-        SHELL_ENV=$merged_name ^nix shell $"path:($flakepath)#__current"
+        let nix_exe = (which nix).path.0
+        PATH=$new_path SHELL_ENV=$merged_name run-external $nix_exe shell $"path:($flakepath)#__current"
     } catch {
         print $"(ansi grey)Last subshell command exited with (ansi yellow)($env.LAST_EXIT_CODE)(ansi reset)"
     }
@@ -194,9 +202,14 @@ def "main show" [] {
     } else {
         print $"- No current statedir. Run (ansi yellow)`envil switch -d <statedir_path>'(ansi reset) to set it"
     }
-    print $"- Env\(s) on the stack: (ansi yellow)($currents.envstack)(ansi reset)"
-    let binlist = $"(ls_or_empty ([~ .envil current bin] | path join | path expand -n) | sort -i)"
-    print $"  | Bins: ($binlist)"
+    let bindir = [~ .envil current bin] | path join | path expand -n
+    if ($bindir in $env.PATH) {
+        print $"- Env\(s) on the stack: (ansi yellow)($currents.envstack)(ansi reset)"
+        let binlist = $"(ls_or_empty $bindir | sort -i)"
+        print $"  | Bins: ($binlist)"
+    } else {
+        print $"- Dir (ansi yellow)`($bindir)'(ansi reset) is not in the PATH"
+    }
     if ($env.SHELL_ENV? != null) {
         let envnames = $env.SHELL_ENV | split row "+"
         print $"- Env\(s) in this subshell: (ansi yellow)($envnames)(ansi reset)"
