@@ -64,7 +64,7 @@ def write-flakes [env_stack state] {
         $flakes.0.flakepath
     } else {
         # Generate a temporary flake.nix that will create an env that merges those of the stack:
-        let m_flakepath = [$state.statedir .tmp-flake] | path join
+        let m_flakepath = [~ .envil tmp-flake] | path join | path expand -n
         let m_state = {
             inputs: ($flakes | each {{$in.envname: $"path:($in.flakepath)"}} | into record)
             envs: {
