@@ -214,27 +214,24 @@ def "main checkpath" [
 # Print out the current state of the stack & bins in the PATH, and the same for the current subshell (if any)
 def "main show" [] {
     let currents = get-currents
-    if ($currents | is-empty) {
-        print $"(ansi yellow)No currents envs and/or statedir(ansi reset)"
-    }
-    if ($currents.statedir? != null) {
-        print $"- Statedir used by current stack: (ansi yellow)`($currents.statedir)'(ansi reset)"
-    } else {
-        print $"- No current statedir. Run (ansi yellow)`envil switch -d <statedir_path>'(ansi reset) to set it"
-    }
     let bindir = [~ .envil current bin] | path join | path expand -n
-    if ($bindir in $env.PATH) {
-        print $"- Env\(s) on the stack: (ansi yellow)($currents.envstack)(ansi reset)"
-        let binlist = $"(ls_or_empty $bindir | sort -i)"
-        print $"  | Bins: ($binlist)"
-    } else {
-        print $"- Dir (ansi yellow)`($bindir)'(ansi reset) is not in the PATH"
-    }
-    if ($env.SHELL_ENV? != null) {
-        let envnames = $env.SHELL_ENV | split row "+"
-        print $"- Env\(s) in this subshell: (ansi yellow)($envnames)(ansi reset)"
-        let binlist = $"($env.PATH | where {str ends-with "-envil/bin"} | ansi strip | each {ls_or_empty $in} | flatten | sort -i)"
-        print $"  | Bins: ($binlist)"
+    {
+        "Current statedir": $currents.statedir?
+        "Env stack": ($currents.envstack? | or-else [] | reverse)
+        "Bins in stack": (if ($bindir in $env.PATH) {
+                ls_or_empty $bindir | sort -i | str join ", "
+            } else {
+                $"(ansi yellow)`($bindir)' is not present in the PATH(ansi reset)"
+            })
+        ...(if ($env.SHELL_ENV? != null) {
+                {
+                    "Envs in subshell": ($env.SHELL_ENV | split row "+" | table -i false)
+                    "Bins in subshell": ($env.PATH | where {str ends-with "-envil/bin"} | ansi strip |
+                                        each {ls_or_empty $in} | flatten | sort -i | str join ", ")
+                }
+            } else {
+                {}
+            })
     }
 }
 
