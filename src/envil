@@ -9,8 +9,9 @@ def main [] {
 
 def select-envs [preselected unique state --verb="use"] {
     if ($preselected | is-empty) {
-        let prompt = $"Select the env \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb):"
-        let prompt_multi = $"Select the envs \(from (ansi yellow)`($state.statedir)'(ansi reset)) to ($verb) \(Use <spacebar> to \(de)select one, <a> to \(de)select all)"
+        let statedir_bit = $"\(from (ansi yellow)`($state.statedir)'(ansi reset))"
+        let prompt = $"Select the env ($statedir_bit)to ($verb):"
+        let prompt_multi = $"Select the envs ($statedir_bit)to ($verb) \(Use <spacebar> to \(de)select one, <a> to \(de)select all)"
         
         $state.envs |
             transpose name desc |
@@ -211,7 +212,7 @@ def "main move" [
     let stack = $stack | insert $new_position $env_
     set-currents --envstack ($stack | reverse)
     {
-        "Env stack": $stack
+        "Env stack": ($stack | table)
     }
 }
 
@@ -277,22 +278,15 @@ def do_update [flakepath] {
 
 # Update selected envs' inputs (package sources) and associated lockfiles
 #
-# Re-loads the current stack to take into account potential changes.
-# However, if the updated envs are used in a subshell, you should exit and restart it
+# IMPORTANT: This does not touch the stack. If you want to update you current stack, run `envil switch -r' afterwards
 def "main update" [
     --unique (-u) # Whether to select just one environment
-    --statedir (-d): path = "" # Where to read the envil state from. If empty, will use the last used statedir
-    --no-reload (-R) # Do not reload the current stack
+    --statedir (-d) = "": path # Where to read the envil state from and write the updated flake.lock files. If empty, uses last used statedir
     ...envnames # Envs to update (will open a picker if none is given)
 ] {
     let state = get-state $statedir
-    let stack = select-envs $envnames $unique $state --verb "update"
-    let flakepath = write-flakes $stack "stack" true
+    let envnames = select-envs $envnames $unique $state --verb "update"
+    let flakepath = write-flakes $envnames "stack" true
     do_update $flakepath
-    print $"(ansi grey)Updated flake.lock for env\(s) (ansi yellow)($envnames)(ansi reset)"
-    if (not $no_reload) {
-        let stack = (get-currents).envstack
-        do_switch $stack $state
-        print $"(ansi grey)Reloaded current stack: (ansi yellow)($stack | get name)(ansi reset)"
-    }
+    print $"(ansi grey)Updated flake.lock files for env\(s) (ansi yellow)($envnames | get name)(ansi reset)"
 }

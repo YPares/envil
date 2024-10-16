@@ -79,8 +79,9 @@ you can run the following:
 - `envil push`: select an env from the current statedir (no `-d` was given) to add to the top of the env stack.
   Globally add to your `PATH` the executables it contains
 - `envil pop`: deactivate the last env added to the stack
-- `envil update`: update the flake.lock files for some environments in the current statedir, and reload the current stack
 - `envil show` (or just `envil`): show the current statedir, the currently activated envs, the bins in the PATH, and (if any) the envs activated in the current subshell
+- `envil update`: update the flake.lock files for some environments in the current statedir
+- `envil switch -r`: reload the current stack (for instance if you used `envil update` previously)
 
 Subshells started by `envil` export the `$SHELL_ENV` environment variable. You can use it in your shell prompt (eg. `PS1` for `bash`) so it shows
 which env(s) is (are) activated in the subshell. For instance if you use `bash`, add the following to your `.bashrc`:

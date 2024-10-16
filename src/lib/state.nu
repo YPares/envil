@@ -38,7 +38,7 @@ export def get-state [statedir --should-exist]: nothing -> record {
     mut state = try {
         open $statefile
     } catch {
-        print $"(ansi grey)No envil state file found. Generating (ansi yellow)($statefile)(ansi reset)"
+        print $"(ansi yellow)No envil-state.yaml found in the statedir. Generating `($statefile)'(ansi reset)"
         $defstate | save $statefile
         $defstate
     }
