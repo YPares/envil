@@ -166,7 +166,7 @@ def "main pop" [
                 print $"(ansi red)Env\(s) (ansi yellow)($invalid)(ansi red) are not in the stack(ansi reset)"
                 error make {msg: "Invalid env names"}
             }
-            let removed = select-envs $num_or_envnames false ($state | update envs {select ...($stack | get name)}) --verb "remove"
+            let removed = select-envs $num_or_envnames false ($state | update envs {select ...($stack | get name)}) --verb "remove" | get name
             { removed: $removed
               new_stack: ($stack | where {not ($in.name in $removed)}) }
         } else {
@@ -177,11 +177,11 @@ def "main pop" [
             } else {
                 $num_or_envnames | get 0 | into int
             }
-            { removed: ($stack | last $num)
+            { removed: ($stack | last $num | get name)
               new_stack: ($stack | drop $num) }
         }
         do_switch $edits.new_stack $state
-        print $"(ansi grey)Removed (ansi yellow)($edits.removed | get name)(ansi grey) from the stack(ansi reset)"
+        print $"(ansi grey)Removed (ansi yellow)($edits.removed)(ansi grey) from the stack(ansi reset)"
     }
 }
 
@@ -229,7 +229,7 @@ def "main show" [] {
             } else {
                 {}
             })
-    }
+    } | table 
 }
 
 def do_update [flakepath] {
@@ -259,6 +259,6 @@ def "main update" [
     if (not $no_reload) {
         let stack = (get-currents).envstack
         do_switch $stack $state
-        print $"(ansi grey)Reloaded current stack: (ansi yellow)($stack)(ansi reset)"
+        print $"(ansi grey)Reloaded current stack: (ansi yellow)($stack | get name)(ansi reset)"
     }
 }
