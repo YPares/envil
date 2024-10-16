@@ -86,6 +86,7 @@ def write-flakes [envstack tmp_flake_folder delete_tmp_lock] {
 # Temporarily activate some envs by starting a subshell
 def "main shell" [
     --unique (-u) # Whether to select just one environment (in which case the env picker will come with a searchbar)
+    --empty (-e) # Whether to start a shell that contains nothing, to hide the current stack. Implies --isolated
     --statedir (-d): path = "" # Where to read the envil state from. If empty, will use the last used statedir
     --isolated (-i) # Whether to limit the PATH of the shell so it can only see the tools from the selected envs and standard UNIX paths
     --reload (-r) # Use it if some updates to the envil-state.yaml are not taken into account when activating multiple envs in the shell
@@ -94,8 +95,9 @@ def "main shell" [
     if ($env.SHELL_ENV? != null) {
         error make {msg: "Nested subshells are not supported"}
     }
+    let isolated = $isolated or $empty
     let state = get-state $statedir
-    let envstack = select-envs $envnames $unique $state --verb "use in the subshell"
+    let envstack = if $empty {[]} else {select-envs $envnames $unique $state --verb "use in the subshell"}
     let flakepath = write-flakes $envstack "shell" $reload
     let isolated_bit = if $isolated {"an isolated"} else {"a"}
     print $"(ansi grey)Starting ($isolated_bit) subshell with env\(s) (ansi yellow)($envstack | get name)(ansi grey)...(ansi reset)"
@@ -215,7 +217,11 @@ def "main show" [] {
     let bindir = [~ .envil current bin] | path join | path expand -n
     {
         "Current statedir": $currents.statedir?
-        "Env stack": ($currents.envstack? | or-else [] | reverse | table)
+        "Env stack": (if ($bindir in $env.PATH) {
+                $currents.envstack? | or-else [] | reverse | table
+            } else {
+                "(not in PATH)"
+            })
         "Bins in stack": (if ($bindir in $env.PATH) {
                 ls_or_empty $bindir | sort -i | str join ", "
             } else {
