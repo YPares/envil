@@ -49,7 +49,7 @@ def "main flake" [
     generate-flake $envname $state $systems
 }
 
-def write-flakes [envstack] {
+def write-flakes [envstack tmp_flake_folder delete_tmp_lock] {
     let flakes = $envstack | each {|env_|
         let flakepath = [$env_.source flakes $env_.name] | path join
         let flake = generate-flake $env_.name (get-state $env_.source)
@@ -64,7 +64,7 @@ def write-flakes [envstack] {
         $flakes.0.flakepath
     } else {
         # Generate a temporary flake.nix that will create an env that merges those of the stack:
-        let m_flakepath = [~ .envil tmp-flake] | path join | path expand -n
+        let m_flakepath = [~ .envil tmp-flakes $tmp_flake_folder] | path join | path expand -n
         let m_state = {
             inputs: ($flakes | each {{$in.envname: $"path:($in.flakepath)"}} | into record)
             envs: {
@@ -74,7 +74,9 @@ def write-flakes [envstack] {
             }
         }
         let flake = generate-flake "multienv" $m_state
-        rm -rf $m_flakepath
+        if $delete_tmp_lock {
+            rm -rf $m_flakepath
+        }
         mkdir $m_flakepath
         $flake | save -rf ([$m_flakepath flake.nix] | path join)
         $m_flakepath
@@ -93,7 +95,7 @@ def "main shell" [
     }
     let state = get-state $statedir
     let envstack = select-envs $envnames $unique $state --verb "use in the subshell"
-    let flakepath = write-flakes $envstack
+    let flakepath = write-flakes $envstack "shell" false
     let isolated_bit = if $isolated {"an isolated"} else {"a"}
     print $"(ansi grey)Starting ($isolated_bit) subshell with env\(s) (ansi yellow)($envstack | get name)(ansi grey)...(ansi reset)"
     let merged_name = $envstack | get name | str join "+"
@@ -111,8 +113,8 @@ def "main shell" [
     }
 }
 
-def do_switch [envstack state] {
-    let flakepath = write-flakes $envstack
+def do_switch [envstack state --delete-tmp-lock] {
+    let flakepath = write-flakes $envstack "stack" $delete_tmp_lock
     ^nix build $"path:($flakepath)#__selected" -o ([~ .envil current] | path join | path expand -n)
     set-currents --envstack $envstack --statedir $state.statedir
 }
@@ -130,7 +132,7 @@ def "main switch" [
     } else {
         select-envs $envnames $unique $state --verb "switch to"
     }
-    do_switch $new_stack $state
+    do_switch $new_stack $state --delete-tmp-lock
     print $"(ansi grey)Switched to env\(s) (ansi yellow)($new_stack | get name)(ansi reset)"
 }
 
@@ -251,7 +253,7 @@ def "main update" [
 ] {
     let state = get-state $statedir
     let stack = select-envs $envnames $unique $state --verb "update"
-    let flakepath = write-flakes $stack
+    let flakepath = write-flakes $stack "stack" true
     do_update $flakepath
     print $"(ansi grey)Updated flake.lock for env\(s) (ansi yellow)($envnames)(ansi reset)"
     if (not $no_reload) {
