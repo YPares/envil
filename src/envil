@@ -188,6 +188,33 @@ def "main pop" [
     }
 }
 
+# Move an env in the stack at a certain position. Use --bottom to move it to the lowermost position
+def "main move" [
+    envname # Which env to move
+    new_position = 0 # Where to put it
+    --bottom (-b) # Place it to the bottom instead
+] {
+    let stack = (get-currents).envstack | reverse
+    mut new_position = if $bottom {($stack | length) - 1} else {$new_position}
+    let env_ = try {
+        $stack | zip (0..) | where {$in.0.name == $envname} | get 0
+    } catch {
+        error make {msg: $"Env ($envname) not present in the stack"}
+    }
+    let env_position = $env_.1
+    let env_ = $env_.0
+    let stack = if $env_position == 0 {
+            $stack | range (1..)
+        } else {
+            $stack | range (0..($env_position - 1)) | append ($stack | range (($env_position + 1)..))
+        }
+    let stack = $stack | insert $new_position $env_
+    set-currents --envstack ($stack | reverse)
+    {
+        "Env stack": $stack
+    }
+}
+
 def ls_or_empty [folder] {
     try {
         ls -s $folder | get name
