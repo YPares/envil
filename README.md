@@ -45,13 +45,11 @@ nix profile install github:YPares/envil#envil
 
 to have `envil` available in your `PATH`. Alternatively, you can run `nix run github:YPares/envil` everytime you want to use `envil`.
 
-If you want to use the `envil switch` command, add the following to your `.profile`:
+Finally, add `$HOME/.envil/current/bin` to your `PATH`. This is the directory in which envil will install and swap the binaries of your
+current environment.
 
-```sh
-PATH="$HOME/.envil/current/bin:$PATH"
-```
-
-and then log out and log back in.
+Note: if you are using Linux, it's better to set your `PATH` in your `$HOME/.profile` so other programs than your terminal can see the updated `PATH`.
+Don't forget to log out and back in after modifying the `.profile`.
 
 ## Usage
 
