@@ -17,13 +17,11 @@
         in rec {
           default = envil;
 
-          envil = imp.nixpkgs.writeShellScriptBin "envil" ''
-            NIX_FORMATTER="${imp.nixpkgs.nixfmt-classic}/bin/nixfmt" \
-            JSON_VALIDATOR="${imp.nixpkgs.jsonschema}/bin/jv" \
-              ${imp.nixpkgs.nushell}/bin/nu -n \
-              "${./src}/envil" \
-              "$@"
-          '';
+          envil = imp.nixpkgs.writeShellApplication {
+            name = "envil";
+            runtimeInputs = with imp.nixpkgs; [nushell jsonschema nixfmt-classic];
+            text = ''nu -n ${./src}/envil "$@"'';
+          } ;
         });
     };
 }

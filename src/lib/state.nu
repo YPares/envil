@@ -42,15 +42,13 @@ export def get-state [statedir --should-exist]: nothing -> record {
         $defstate | save $statefile
         $defstate
     }
-    
-    if ($env.JSON_VALIDATOR? != null) {
-        try {
-            let schema_path = [($env.CURRENT_FILE | path dirname) envil-state-schema.json] | path join
-            run-external $env.JSON_VALIDATOR $schema_path $statefile
-        } catch {
-            print $"(ansi red)($statefile) is not a valid envil state file. See validator errors above(ansi reset)"
-            error make {msg: "Failed to validate state file"}
-        }
+
+    try {
+        let schema_path = [($env.CURRENT_FILE | path dirname) envil-state-schema.json] | path join
+        ^jv $schema_path $statefile
+    } catch {
+        print $"(ansi red)($statefile) is not a valid envil state file. See validator errors above(ansi reset)"
+        error make {msg: "Failed to validate state file"}
     }
     
     let includes = $state.includes?

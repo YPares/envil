@@ -151,10 +151,5 @@ export def generate-flake [
 
     let $outputs = $envs_table | each {[$in.name $in.output]} | into record
 
-    output-flake $envname $systems $nixpkgs_key $inputs $outputs |
-    if ($env.NIX_FORMATTER? == null) {
-        $in
-    } else {
-        $in | run-external $env.NIX_FORMATTER
-    }
+    output-flake $envname $systems $nixpkgs_key $inputs $outputs | ^nixfmt
 }
