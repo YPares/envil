@@ -51,7 +51,7 @@ def "main flake" [
 
 def write-flakes [envstack] {
     let flakes = $envstack | each {|env_|
-        let flakepath = [$env_.source env-flakes $env_.name] | path join
+        let flakepath = [$env_.source flakes $env_.name] | path join
         let flake = generate-flake $env_.name (get-state $env_.source)
         mkdir $flakepath
         $flake | save -rf ([$flakepath flake.nix] | path join)
