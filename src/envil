@@ -88,6 +88,7 @@ def "main shell" [
     --unique (-u) # Whether to select just one environment (in which case the env picker will come with a searchbar)
     --statedir (-d): path = "" # Where to read the envil state from. If empty, will use the last used statedir
     --isolated (-i) # Whether to limit the PATH of the shell so it can only see the tools from the selected envs and standard UNIX paths
+    --reload (-r) # Use it if some updates to the envil-state.yaml are not taken into account when activating multiple envs in the shell
     ...envnames # Envs to activate (will open a picker if none is given)
 ] {
     if ($env.SHELL_ENV? != null) {
@@ -95,7 +96,7 @@ def "main shell" [
     }
     let state = get-state $statedir
     let envstack = select-envs $envnames $unique $state --verb "use in the subshell"
-    let flakepath = write-flakes $envstack "shell" false
+    let flakepath = write-flakes $envstack "shell" $reload
     let isolated_bit = if $isolated {"an isolated"} else {"a"}
     print $"(ansi grey)Starting ($isolated_bit) subshell with env\(s) (ansi yellow)($envstack | get name)(ansi grey)...(ansi reset)"
     let merged_name = $envstack | get name | str join "+"
@@ -241,10 +242,10 @@ def do_update [flakepath] {
     }
 }
 
-# Update an env's inputs (package sources) and its associated lockfile
+# Update selected envs' inputs (package sources) and associated lockfiles
 #
 # Re-loads the current stack to take into account potential changes.
-# If that env is used in a subshell, you should exit and restart it.
+# However, if the updated envs are used in a subshell, you should exit and restart it
 def "main update" [
     --unique (-u) # Whether to select just one environment
     --statedir (-d): path = "" # Where to read the envil state from. If empty, will use the last used statedir
