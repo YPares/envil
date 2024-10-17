@@ -10,12 +10,12 @@ def main [] {
 def select-envs [preselected unique state --verb="use"] {
     if ($preselected | is-empty) {
         let statedir_bit = if $state.statedir? != null {
-            $"\(from (ansi yellow)`($state.statedir)'(ansi reset))"
+            $" \(from (ansi yellow)`($state.statedir)'(ansi reset)) "
         } else {
-            ""
+            " "
         }
         let prompt = $"Select the env ($statedir_bit)to ($verb):"
-        let prompt_multi = $"Select the envs ($statedir_bit)to ($verb) \(Use <spacebar> to \(de)select one, <a> to \(de)select all)"
+        let prompt_multi = $"Select the envs($statedir_bit)to ($verb) \(Use <spacebar> to \(de)select one, <a> to \(de)select all)"
         
         $state.envs |
             transpose name desc |
