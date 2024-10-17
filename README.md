@@ -12,6 +12,8 @@
      |_____/
 ```
 
+![Demo GIF](./assets/demo.gif)
+
 `envil` is a tool to:
 
 - generate simple Nix flakes from a simple yaml description of a set of environments (see for instance [here](./examples/statedir/envil-state.yaml)),
