@@ -85,7 +85,7 @@ export def generate-flake [
         let cur_env = try {
             $state.envs | get $cur_name
         } catch {
-            print $"(ansi red)Env (ansi yellow)`($cur_name)'(ansi red) does not exist in statedir (ansi yellow)`($state.statedir)'(ansi reset)"
+            print $"(ansi red)Env `($cur_name)' does not exist in statedir (ansi yellow)`($state.statedir)'(ansi reset)"
             error make {msg: $"Env `($cur_name)' not found"}
         }
         mut cur_done = gen-one-env $cur_name $cur_env
@@ -109,7 +109,7 @@ export def generate-flake [
         mut url = try {
                 $state.inputs | get $i
             } catch {|e|
-                print $"(ansi red)Input (ansi yellow)`($i)'(ansi red) is not defined in the `inputs' section(ansi reset)"
+                print $"(ansi red)Input `($i)' is not defined in the `inputs' section(ansi reset)"
                 error make $e
             }
         if (($url | describe) | str starts-with "record") {

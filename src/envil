@@ -9,7 +9,11 @@ def main [] {
 
 def select-envs [preselected unique state --verb="use"] {
     if ($preselected | is-empty) {
-        let statedir_bit = $"\(from (ansi yellow)`($state.statedir)'(ansi reset))"
+        let statedir_bit = if $state.statedir? != null {
+            $"\(from (ansi yellow)`($state.statedir)'(ansi reset))"
+        } else {
+            ""
+        }
         let prompt = $"Select the env ($statedir_bit)to ($verb):"
         let prompt_multi = $"Select the envs ($statedir_bit)to ($verb) \(Use <spacebar> to \(de)select one, <a> to \(de)select all)"
         
@@ -18,7 +22,12 @@ def select-envs [preselected unique state --verb="use"] {
             flatten |
             select name description? |
             update description {|e|
-                $"($e.name) (ansi grey)\(($e.description))(ansi reset)"
+                let desc_bit = if $e.description? != null {
+                    $" (ansi grey)\(($e.description))(ansi reset)"
+                } else {
+                    ""
+                }
+                $"($e.name)($desc_bit)"
             } |
             sort-by -i name |
             if $unique {
@@ -29,7 +38,7 @@ def select-envs [preselected unique state --verb="use"] {
             get name
     } else {
         $preselected
-    } | wrap name | insert source $state.statedir
+    } | wrap name | insert source $state.statedir?
 }
 
 # Print out the flake that will generate an env
@@ -57,7 +66,7 @@ def write-flakes [envstack tmp_flake_folder delete_tmp_lock] {
         mkdir $flakepath
         $flake | save -rf ([$flakepath flake.nix] | path join)
         if (not ([$flakepath flake.lock] | path join | path exists)) {
-            do_update $flakepath
+            do-update $flakepath
         }
         {envname: $env_.name, flakepath: $flakepath}
     }
@@ -101,7 +110,7 @@ def "main shell" [
     let envstack = if $empty {[]} else {select-envs $envnames $unique $state --verb "use in the subshell"}
     let flakepath = write-flakes $envstack "shell" $reload
     let isolated_bit = if $isolated {"an isolated"} else {"a"}
-    print $"(ansi grey)Starting ($isolated_bit) subshell with env\(s) (ansi yellow)($envstack | get name)(ansi grey)...(ansi reset)"
+    print $"(ansi grey)Starting ($isolated_bit) subshell with env\(s) (ansi green)($envstack | get name)(ansi grey)...(ansi reset)"
     let merged_name = $envstack | get name | str join "+"
     let new_path = if $isolated {
         [/usr/local/sbin, /usr/local/bin, /usr/sbin, /usr/bin, /sbin, /bin]
@@ -117,7 +126,7 @@ def "main shell" [
     }
 }
 
-def do_switch [envstack state --delete-tmp-lock] {
+def do-switch [envstack state --delete-tmp-lock] {
     let flakepath = write-flakes $envstack "stack" $delete_tmp_lock
     ^nix build $"path:($flakepath)#__selected" -o ([~ .envil current] | path join | path expand -n)
     set-currents --envstack $envstack --statedir $state.statedir
@@ -136,8 +145,8 @@ def "main switch" [
     } else {
         select-envs $envnames $unique $state --verb "switch to"
     }
-    do_switch $new_stack $state --delete-tmp-lock
-    print $"(ansi grey)Switched to env\(s) (ansi yellow)($new_stack | get name)(ansi reset)"
+    do-switch $new_stack $state --delete-tmp-lock
+    show-stack
 }
 
 # Add new envs on top of the stack
@@ -149,43 +158,45 @@ def "main push" [
     let state = get-state $statedir
     let stack = (get-currents).envstack
     let new_stack = select-envs $envnames $unique ($state | update envs {reject -i ...($stack | get name)}) --verb "add to the stack"
-    do_switch ($stack ++ $new_stack) $state
-    print $"(ansi grey)Added env\(s) (ansi yellow)($new_stack | get name)(ansi grey) to the stack(ansi reset)"
+    do-switch ($stack ++ $new_stack) $state
+    show-stack
 }
 
 # Remove the top env(s) from the stack
+#
+# If no args are given, pops the first env on top of the stack
 def "main pop" [
-    --by-name (-n) # Select envs to remove by name instead
-    --all (-a) # Pop the entire stack, ignoring other args
-    ...num_or_envnames # How many envs 
+    --select (-s) # Open a selector menu, ignoring subsequent args
+    --all (-a) # Pop the entire stack, ignoring subsequent args
+    --number (-n) = 0 # Pop a certain amount of envs from the top of the stack, ignoring subsequent args
+    ...envnames # Which envs to pop
 ] {
-    let state = get-state ""
     let stack = (get-currents).envstack
     if ($stack | is-empty) {
         print $"(ansi grey)Nothing to pop(ansi reset)"
     } else {
-        let edits = if $by_name and not $all {
-            let invalid = $num_or_envnames | where {not ($in in ($stack | get name))}
+        let new_stack = if ((not $select) and ($all or $number > 0 or ($envnames | is-empty))) {
+            let number = if $all {
+                $stack | length
+            } else if $number > 0 {
+                $number
+            } else {
+                1
+            }
+            $stack | drop $number
+        } else {
+            let invalid = $envnames | where {not ($in in ($stack | get name))}
             if (not ($invalid | is-empty)) {
-                print $"(ansi red)Env\(s) (ansi yellow)($invalid)(ansi red) are not in the stack(ansi reset)"
+                print $"(ansi red)Env\(s) ($invalid) not in the stack(ansi reset)"
                 error make {msg: "Invalid env names"}
             }
-            let removed = select-envs $num_or_envnames false ($state | update envs {select ...($stack | get name)}) --verb "remove" | get name
-            { removed: $removed
-              new_stack: ($stack | where {not ($in.name in $removed)}) }
-        } else {
-            let num = if $all {
-                $stack | length
-            } else if ($num_or_envnames | is-empty) {
-                1
-            } else {
-                $num_or_envnames | get 0 | into int
-            }
-            { removed: ($stack | last $num | get name)
-              new_stack: ($stack | drop $num) }
+            # We don't select envs from the state but from the stack
+            let fake_state = { envs: ($stack | get name | each {{$in: ""}} | into record) }
+            let removed = select-envs $envnames false $fake_state --verb "remove" | get name
+            $stack | where {not ($in.name in $removed)}
         }
-        do_switch $edits.new_stack $state
-        print $"(ansi grey)Removed (ansi yellow)($edits.removed)(ansi grey) from the stack(ansi reset)"
+        do-switch $new_stack (get-state "")
+        show-stack
     }
 }
 
@@ -211,9 +222,12 @@ def "main move" [
         }
     let stack = $stack | insert $new_position $env_
     set-currents --envstack ($stack | reverse)
-    {
-        "Env stack": ($stack | table)
-    }
+    show-stack
+}
+
+def show-stack [] {
+    print $"(ansi grey)Env stack is now:(ansi reset)"
+    (get-currents).envstack | reverse
 }
 
 def ls_or_empty [folder] {
@@ -225,18 +239,20 @@ def ls_or_empty [folder] {
 }
 
 # Report if some bins are present several times in your PATH
-def "main checkpath" [
+def "main duplicates" [
     --all (-a) # Check for all bins, not just those in the nix store
 ] {
     let bins = $env.PATH | each {|p| try {ls $p} catch {[]} | insert source $p} | flatten | rename -c {name: path} |
                insert stem {$in.path | path parse | get stem} | update path {path expand} |
                if $all { $in } else { where path starts-with /nix/store }
-    let bins = $bins | group-by stem --to-table | each {{group: $in.group, items: ($in.items | uniq-by path | uniq-by source)}}
-    for bin in $bins {
-        if (($bin.items | length) >= 2) {
-            print $"(ansi yellow)`($bin.group)'(ansi reset) is present more than once in your PATH. Found in: ($bin.items.source)"
+    $bins |
+        group-by stem --to-table |
+        each {|bin|
+            let items = $bin.items | uniq-by path | uniq-by source
+            if (($items | length) >= 2) {
+                {"Duplicated bins": $bin.group, "Sources": $items.source}
+            }
         }
-    }
 }
 
 # Print out the current state of the stack & bins in the PATH, and the same for the current subshell (if any)
@@ -246,7 +262,7 @@ def "main show" [] {
     {
         "Current statedir": $currents.statedir?
         "Env stack": (if ($bindir in $env.PATH) {
-                $currents.envstack? | or-else [] | reverse | table
+                $currents.envstack? | or-else [] | reverse
             } else {
                 "(not in PATH)"
             })
@@ -257,17 +273,17 @@ def "main show" [] {
             })
         ...(if ($env.SHELL_ENV? != null) {
                 {
-                    "Envs in subshell": ($env.SHELL_ENV | split row "+" | table -i false)
+                    "Envs in subshell": ($env.SHELL_ENV | split row "+")
                     "Bins in subshell": ($env.PATH | where {str ends-with "-envil/bin"} | ansi strip |
                                         each {ls_or_empty $in} | flatten | sort -i | str join ", ")
                 }
             } else {
                 {}
             })
-    } | table 
+    }
 }
 
-def do_update [flakepath] {
+def do-update [flakepath] {
     try {
         ^nix flake update --flake $"path:($flakepath)"
     } catch {
@@ -287,6 +303,6 @@ def "main update" [
     let state = get-state $statedir
     let envnames = select-envs $envnames $unique $state --verb "update"
     let flakepath = write-flakes $envnames "stack" true
-    do_update $flakepath
-    print $"(ansi grey)Updated flake.lock files for env\(s) (ansi yellow)($envnames | get name)(ansi reset)"
+    do-update $flakepath
+    print $"(ansi grey)Updated flake.lock files for env\(s) (ansi green)($envnames | get name)(ansi reset)"
 }
