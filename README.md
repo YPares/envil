@@ -2,17 +2,7 @@
 
 # envil
 
-```ascii
-      , `. ,'
-       `.',
-   ---||;
-     ====
-.--------------,
- \___.      __/
-     |_____/
-```
-
-![Demo GIF](./assets/demo.gif)
+<img src="./assets/logo.png" width="250"/>
 
 `envil` is a tool to:
 
@@ -42,6 +32,8 @@ multiple profiles and contributes to cluttering your PATH. Conversely, `envil` e
 quickly switch between environments or start shells to avoid situations where you end up with two different versions
 of the same tool in your `PATH`, or things like two different `python` installations but each one configured with its own libraries,
 leaving you unable to select which one you want.
+
+![Demo GIF](./assets/demo.gif)
 
 ## Setup
 
