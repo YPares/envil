@@ -92,6 +92,16 @@ PS1="${shell_env_bit}...the rest of your prompt..."
 
 Run `nix profile upgrade envil --refresh` to update `envil` to the latest version.
 
+## Pushing your current stack to a binary cache
+
+If you have `cachix` installed and if you did set up a cache on <https://www.cachix.org>, run:
+
+```sh
+cachix push <cache_name> $HOME/.envil/current
+```
+
+Anybody who runs `cachix use <cache_name>` and switches to the same env(s) than you will benefit from the binary cache.
+
 ## Related tools & philosophy
 
 `envil` is related to [`devenv`](https://devenv.sh/), [`devbox`](https://www.jetify.com/docs/devbox/),
