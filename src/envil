@@ -64,6 +64,15 @@ def "main flake" [
     generate-flake $envname $state $systems
 }
 
+def do-update [flakepath: path] {
+    try {
+        ^nix flake update --flake $"path:($flakepath)" --refresh
+    } catch {
+        # We may be on an older version of nix where the --flake arg does not exist yet
+        ^nix flake update $"path:($flakepath)" --refresh
+    }
+}
+
 def write-flakes [
     environments: table<source: path, name: string>
     tmp_flake_name: string
@@ -74,7 +83,7 @@ def write-flakes [
         let flake = generate-flake $env_.name (get-state $env_.source)
         mkdir $flakepath
         $flake | save -rf ([$flakepath flake.nix] | path join)
-        if (not ([$flakepath flake.lock] | path join | path exists)) {
+        if (not ([$flakepath flake.lock] | path join | path exists) or $env_.update? == true) {
             do-update $flakepath
         }
         {envname: $env_.name, flakepath: $flakepath}
@@ -299,15 +308,6 @@ def "main show" [] {
     }
 }
 
-def do-update [flakepath: path] {
-    try {
-        ^nix flake update --flake $"path:($flakepath)"
-    } catch {
-        # We may be on an older version of nix where the --flake arg does not exist yet
-        ^nix flake update $"path:($flakepath)"
-    }
-}
-
 # Update selected envs' inputs (package sources) and associated lockfiles
 #
 # IMPORTANT: This does not touch the stack. If you want to update you current stack, run `envil switch -r' afterwards
@@ -317,8 +317,7 @@ def "main update" [
     ...envnames: string # Envs to update (will open a picker if none is given)
 ] {
     let state = get-state $statedir
-    let envnames = select-envs $envnames $unique $state --verb "update"
+    let envnames = select-envs $envnames $unique $state --verb "update" | insert update true
     let flakepath = write-flakes $envnames "stack" true
-    do-update $flakepath
     print $"(ansi grey)Updated flake.lock files for env\(s) (ansi green)($envnames | get name)(ansi reset)"
 }
