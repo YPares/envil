@@ -12,13 +12,16 @@ const defstate = {
     }
 }
 
-def currents-path [] {
+def currents-path []: nothing -> path {
     ([~ .envil currents.nuon] | path join | path expand -n)
 }
 
 # Reads the state from the statedir.
 # Adds to this record a 'statedir' field, which contains the absolute path of the statedir
-export def get-state [statedir --should-exist]: nothing -> record {
+export def get-state [
+    statedir: path
+    --should-exist
+]: nothing -> record {
     let statedir = if $statedir == "" {
         try {
             open (currents-path) | get statedir
