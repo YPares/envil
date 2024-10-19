@@ -196,7 +196,7 @@ def "main pop" [
     --number (-n): int = 0 # Pop a certain amount of envs from the top of the stack, ignoring subsequent args
     ...envnames: string # Which envs to pop
 ] {
-    let currents = (get-currents)
+    let currents = get-currents
     if ($currents.envstack | is-empty) {
         print $"(ansi grey)Nothing to pop(ansi reset)"
     } else {
@@ -287,7 +287,7 @@ def "main show" [] {
     {
         "Current statedir": $currents.statedir?
         "Env stack": (if ($bindir in $env.PATH) {
-                $currents.envstack? | or-else [] | reverse
+                $currents.envstack | reverse
             } else {
                 "(not in PATH)"
             })

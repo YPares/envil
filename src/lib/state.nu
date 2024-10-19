@@ -13,6 +13,7 @@ const defstate = {
 }
 
 def currents-path []: nothing -> path {
+    mkdir ([~ .envil] | path join | path expand -n)
     ([~ .envil currents.nuon] | path join | path expand -n)
 }
 
@@ -26,7 +27,7 @@ export def get-state [
         try {
             open (currents-path) | get statedir
         } catch {
-            print $"(ansi red)No statedir is known. First use a command with `-d' to use or create a statedir(ansi reset)"
+            print $"(ansi red)No statedir is known. Run with `-d' to use or create a statedir(ansi reset)"
             error make {msg: "No statedir"}
         }
     } else {$statedir | path expand}
@@ -86,8 +87,8 @@ export def set-currents [
 
 export def get-currents [] {
     try {
-        open (currents-path) | upsert envstack {or-else []}
+        open (currents-path)
     } catch {
         {}
-    }
+    } | upsert envstack {or-else []}
 }
