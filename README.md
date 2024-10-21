@@ -7,7 +7,7 @@
 `envil` is a tool to:
 
 - describe a set of environments ("toolkits") that contain executables you regularly want to access and hide rapidly (see for instance [here](./examples/statedir/envil-state.yaml)),
-- install and activate or deactivate at will such environments globally (ie. without having to start a subshell), or conversely
+- install and switch on/off such environments globally in an environment stack, or conversely:
 - start a subshell with a specific set of environments locally activated.
 
 `envil` does so by using [Nix](https://nixos.org), and by creating _Nix flakes_ on the fly.
