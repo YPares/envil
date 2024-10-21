@@ -25,8 +25,7 @@ It is important to note that `envil` is **not** a tool to:
 - install and manage Nix for you,
 - write complicated Nix logic for you.
 
-If you already know and use Nix, you may have still a use for it.
-That is because in its current state, `envil` aims at being an alternative to the `nix profile` command, which makes inconvenient to work with
+If you already know and use Nix, `envil` aims at being an alternative to the `nix profile` command, which makes inconvenient to work with
 multiple profiles and contributes to cluttering your PATH. Conversely, `envil` enables you and incites you to be selective and to
 quickly switch between environments or start shells to avoid situations where you end up with two different versions
 of the same tool in your `PATH`, or things like two different `python` installations but each one configured with its own libraries,
