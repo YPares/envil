@@ -146,6 +146,30 @@ def "main shell" [
     }
 }
 
+# Run an executable provided by an env
+def "main run" [
+    envname: string # Which environment to look in
+    bin = "" # Which bin to run. If empty will use `envname' as the bin name
+    --statedir (-d): path = "" # Where to read the envil state from. If empty, will use the last used statedir
+    ...args: string # The args to give to the command
+] {
+    let state = get-state $statedir
+    let flakepath = write-flakes [{name: $envname, source: $state.statedir}] "run" true
+    let output = ^nix build $"path:($flakepath)#__selected" --print-out-paths --no-link
+    let bin = if ($bin | is-empty) {
+        $envname
+    } else {
+        $bin
+    }
+    let bin_path = $output | path join "bin" $bin
+    if ($bin_path | path exists) {
+        run-external $bin_path ...$args
+    } else {
+        print $"(ansi red)Could not find bin `($bin)' in env `($envname)'.(ansi reset) Other bins in that env:"
+        ls-filenames ($output | path join "bin")
+    }
+}
+
 def do-switch [
     envstack: table<source: path, name: string>
     statedir: path
@@ -225,7 +249,7 @@ def "main pop" [
     }
 }
 
-# Move an env in the stack at a certain position. Use --bottom to move it to the lowermost position
+# Move an env of the stack to a certain position. Use --bottom to move it to the lowermost position
 def "main move" [
     envname: string # Which env to move
     new_position = 0 # Where to put it
@@ -255,7 +279,7 @@ def show-stack [] {
     (get-currents).envstack | reverse
 }
 
-def ls_or_empty [folder: path] {
+def ls-filenames [folder: path] {
     try {
         ls -s $folder | get name
     } catch {
@@ -292,7 +316,7 @@ def "main show" [] {
                 "(not in PATH)"
             })
         "Bins in stack": (if ($bindir in $env.PATH) {
-                ls_or_empty $bindir | sort -i | str join ", "
+                ls-filenames $bindir | sort -i | str join ", "
             } else {
                 $"(ansi yellow)`($bindir)' is not present in the PATH(ansi reset)"
             })
@@ -300,7 +324,7 @@ def "main show" [] {
                 {
                     "Envs in subshell": ($env.SHELL_ENV | split row "+")
                     "Bins in subshell": ($env.PATH | where {str ends-with "-envil/bin"} | ansi strip |
-                                        each {ls_or_empty $in} | flatten | sort -i | str join ", ")
+                                        each {ls-filenames $in} | flatten | sort -i | str join ", ")
                 }
             } else {
                 {}
