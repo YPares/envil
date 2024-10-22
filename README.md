@@ -12,7 +12,7 @@
 
 `envil` does so by using [Nix](https://nixos.org), and by creating _Nix flakes_ on the fly.
 In the Nix ecosystem, a _flake_ is a file that describes a set of programs (the flake _outputs_) for various possible systems,
-and how to download and build those programs given their dependencies (the flake _inputs_). Nix can then install those programs in an isolated store,
+and how to download and build those programs and their dependencies (the flake _inputs_). Nix can then install those programs in an isolated store,
 ie. without making them appear in your global `PATH`. Nix being a simple yet generic and powerful programming language,
 some seemingly simple use cases (such as listing a fixed set of pre-existing packages in a flake and installing them) may _appear_ more complex
 to tackle than they need to.
@@ -51,8 +51,8 @@ to have `envil` available in your `PATH`. Alternatively, you can run `nix run gi
 Finally, add `$HOME/.envil/current/bin` to your `PATH`. This is the directory in which envil will install and swap the binaries of your
 current environment.
 
-Note: if you are using Linux, it's better to set your `PATH` in your `$HOME/.profile` so other programs than your terminal can see the updated `PATH`.
-Don't forget to log out and back in after modifying the `.profile`.
+Note: if you are using Linux, it's better to set your `PATH` in your `$HOME/.pam_environment` or `$HOME/.profile` so other programs than your terminal can see the updated `PATH`.
+Don't forget to log out and back in after.
 
 ## Usage
 
