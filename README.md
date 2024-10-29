@@ -25,7 +25,7 @@ It is important to note that `envil` is **not** a tool to:
 - install and manage Nix for you,
 - write complicated Nix logic for you.
 
-If you already know and use Nix, `envil` aims at being an alternative to the `nix profile` command, which makes inconvenient to work with
+If you already know and use Nix, `envil` aims at being an alternative to the `nix profile` command, which makes it inconvenient to work with
 multiple profiles and contributes to cluttering your PATH. Conversely, `envil` enables you and incites you to be selective and to
 quickly switch between environments or start shells to avoid situations where you end up with two different versions
 of the same tool in your `PATH`, or things like two different `python` installations but each one configured with its own libraries,
@@ -33,7 +33,7 @@ leaving you unable to select which one you want.
 
 `envil` has been developped with cooperation between Nix-users and non Nix-users in mind, notably in development teams where some people would
 want to introduce Nix to provision their local development environment(s) without too much friction.
-This is why `envil` chooses simple and versionable yaml environment descriptions, but supports any flake as an package source, and operates by
+This is why `envil` chooses simple and versionable yaml environment descriptions, but supports any flake as a package source, and operates by
 outputting regular Nix flakes that are locked and versionable too.
 
 ![Demo GIF](./assets/demo.gif)
@@ -127,7 +127,7 @@ You have two possible workflows with `envil`:
 
 ## Related tools & philosophy
 
-`envil` is related to [`devenv`](https://devenv.sh/), [`devbox`](https://www.jetify.com/docs/devbox/),
+`envil` is related to [`niv`](https://github.com/nmattia/niv), [`devenv`](https://devenv.sh/), [`devbox`](https://www.jetify.com/docs/devbox/),
 [`flox`](https://flox.dev/), [`flakey-profile`](https://github.com/lf-/flakey-profile) and
 [`home-manager`](https://github.com/nix-community/home-manager) but with a focus on:
 
