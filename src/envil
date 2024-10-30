@@ -19,7 +19,7 @@ def select-envs [
         } else {
             " "
         }
-        let prompt = $"Select the env ($statedir_bit)to ($verb):"
+        let prompt = $"Select the env($statedir_bit)to ($verb):"
         let prompt_multi = $"Select the envs($statedir_bit)to ($verb) \(Use <spacebar> to \(de)select one, <a> to \(de)select all)"
         
         $state.envs |
@@ -49,7 +49,7 @@ def select-envs [
 # Print out the flake that will generate an env
 def "main flake" [
     envname: string = ""
-    --statedir (-d): path = "" # Where to read the envil state from
+    --statedir (-d): string = "" # Where to read the envil state from
                                #
                                # If empty, will use the statedir of the current stack
     --systems (-s): list<string> = []
@@ -66,50 +66,54 @@ def "main flake" [
 
 def do-update [flakepath: path] {
     try {
-        ^nix flake update --flake $"path:($flakepath)" --refresh
+        ^nix flake update --flake $flakepath --refresh
     } catch {
         # We may be on an older version of nix where the --flake arg does not exist yet
-        ^nix flake update $"path:($flakepath)" --refresh
+        ^nix flake update $flakepath --refresh
     }
 }
 
 def write-flakes [
-    environments: table<source: path, name: string>
+    environments: table<source: string, name: string>
     tmp_flake_name: string
     refresh_tmp_flake: bool
-] {
+] nothing -> record<envname: string, flakepath: string> {
     let flakes = $environments | each {|env_|
-        let flakepath = [$env_.source flakes $env_.name] | path join
-        let flake = generate-flake $env_.name (get-state $env_.source)
-        mkdir $flakepath
-        $flake | save -rf ([$flakepath flake.nix] | path join)
-        if (not ([$flakepath flake.lock] | path join | path exists) or $env_.update? == true) {
-            do-update $flakepath
+        let state = get-state $env_.source
+        if $state.statedir_is_flake? == true {
+            {envname: $env_.name, flakepath: $env_.source}
+        } else {
+            let flakepath = [$env_.source flakes $env_.name] | path join
+            mkdir $flakepath
+            generate-flake $env_.name $state | save -rf ([$flakepath flake.nix] | path join)
+            if (not ([$flakepath flake.lock] | path join | path exists) or $env_.update? == true) {
+                do-update $"path:($flakepath)"
+            }
+            {envname: $env_.name, flakepath: $"path:($flakepath)"}
         }
-        {envname: $env_.name, flakepath: $flakepath}
     }
     if ($flakes | length) == 1 {
-        $flakes.0.flakepath
+        # Just one env on the stack. We directly use that env's flake:
+        $flakes.0
     } else {
+        # Multiple envs on the stack. We generate a temporary flake.nix that will create an env that merges those of the stack:
         let metaenv_name = $"envil-($tmp_flake_name)"
-        # Generate a temporary flake.nix that will create an env that merges those of the stack:
         let m_flakepath = [~ .envil tmp-flakes $tmp_flake_name] | path join | path expand -n
         let m_state = {
-            inputs: ($flakes | each {{$in.envname: $"path:($in.flakepath)"}} | into record)
+            inputs: ($flakes | each {{($in.envname | str replace "." "-"): $in.flakepath}} | into record)
             envs: {
                 $metaenv_name: {
-                    contents: ($environments | each {{$in.name: [__selected]}} | into record)
+                    contents: ($flakes | each {{($in.envname | str replace "." "-"): [$in.envname]}} | into record)
                 }
             }
         }
-        let flake = generate-flake $metaenv_name $m_state
         if $refresh_tmp_flake {
-            # We delete the $tmp_flake_name flake including the flake.lock
+            # We delete the $tmp_flake_name flake and its flake.lock
             rm -rf $m_flakepath
         }
         mkdir $m_flakepath
-        $flake | save -rf ([$m_flakepath flake.nix] | path join)
-        $m_flakepath
+        generate-flake $metaenv_name $m_state | save -rf ([$m_flakepath flake.nix] | path join)
+        {envname: $metaenv_name, flakepath: $"path:($m_flakepath)"}
     }
 }
 
@@ -117,7 +121,7 @@ def write-flakes [
 def "main shell" [
     --unique (-u) # Whether to select just one environment (in which case the env picker will come with a searchbar)
     --empty (-e) # Whether to start a shell that contains nothing, to hide the current stack. Implies --isolated
-    --statedir (-d): path = "" # Where to read the envil state from. If empty, will use the last used statedir
+    --statedir (-d): string = "" # Where to read the envil state from. If empty, will use the last used statedir
     --isolated (-i) # Whether to limit the PATH of the shell so it can only see the tools from the selected envs and standard UNIX paths
     --no-refresh (-R) # Do not refresh the flake.lock of the temp flake generated for the whole shell
     ...envnames: string # Envs to activate (will open a picker if none is given)
@@ -128,7 +132,7 @@ def "main shell" [
     let isolated = $isolated or $empty
     let state = get-state $statedir
     let envstack = if $empty {[]} else {select-envs $envnames $unique $state --verb "use in the subshell"}
-    let flakepath = write-flakes $envstack "shell" (not $no_refresh)
+    let flakeAndEnv = write-flakes $envstack "shell" (not $no_refresh)
     let isolated_bit = if $isolated {"an isolated"} else {"a"}
     print $"(ansi grey)Starting ($isolated_bit) subshell with env\(s) (ansi green)($envstack | get name)(ansi grey)...(ansi reset)"
     let merged_name = $envstack | get name | str join "+"
@@ -140,7 +144,7 @@ def "main shell" [
     set-currents --statedir $state.statedir
     try {
         let nix_exe = (which nix).path.0
-        PATH=$new_path SHELL_ENV=$merged_name run-external $nix_exe shell $"path:($flakepath)#__selected"
+        PATH=$new_path SHELL_ENV=$merged_name run-external $nix_exe shell $"($flakeAndEnv.flakepath)#($flakeAndEnv.envname)"
     } catch {
         print $"(ansi grey)Last subshell command exited with (ansi yellow)($env.LAST_EXIT_CODE)(ansi reset)"
     }
@@ -150,12 +154,12 @@ def "main shell" [
 def "main run" [
     envname: string # Which environment to look in
     bin = "" # Which bin to run. If empty will use `envname' as the bin name
-    --statedir (-d): path = "" # Where to read the envil state from. If empty, will use the last used statedir
+    --statedir (-d): string = "" # Where to read the envil state from. If empty, will use the last used statedir
     ...args: string # The args to give to the command
 ] {
     let state = get-state $statedir
-    let flakepath = write-flakes [{name: $envname, source: $state.statedir}] "run" true
-    let output = ^nix build $"path:($flakepath)#__selected" --print-out-paths --no-link
+    let flakeAndEnv = write-flakes [{name: $envname, source: $state.statedir}] "run" true
+    let output = ^nix build $"($flakeAndEnv.flakepath)#($flakeAndEnv.envname)" --print-out-paths --no-link
     let bin = if ($bin | is-empty) {
         $envname
     } else {
@@ -171,19 +175,19 @@ def "main run" [
 }
 
 def do-switch [
-    envstack: table<source: path, name: string>
-    statedir: path
+    envstack: table<source: string, name: string>
+    statedir: string
     refresh_tmp_flake: bool
 ] {
-    let flakepath = write-flakes $envstack "stack" $refresh_tmp_flake
-    ^nix build $"path:($flakepath)#__selected" -o ([~ .envil current] | path join | path expand -n)
+    let flakeAndEnv = write-flakes $envstack "stack" $refresh_tmp_flake
+    ^nix build $"($flakeAndEnv.flakepath)#($flakeAndEnv.envname)" -o ([~ .envil current] | path join | path expand -n)
     set-currents --envstack $envstack --statedir $statedir
 }
 
 # Switch to a new stack, or reload the current one from statedirs
 def "main switch" [
     --unique (-u) # Whether to select just one environment (in which case the env picker will come with a searchbar)
-    --statedir (-d): path = "" # Where to read the envil state from. If empty, will use the last used statedir
+    --statedir (-d): string = "" # Where to read the envil state from. If empty, will use the last used statedir
     --reload (-r) # Reload the current stack, ignoring other args
     ...envnames: string # Envs to activate (will open a picker if none is given)
 ] {
@@ -200,7 +204,7 @@ def "main switch" [
 # Add new envs on top of the stack
 def "main push" [
     --unique (-u) # Whether to select just one env (in which case the env picker will come with a searchbar)
-    --statedir (-d): path = "" # Where to read the envil state from. If empty, will use the last used statedir
+    --statedir (-d): string = "" # Where to read the envil state from. If empty, will use the last used statedir
     --no-refresh (-R) # Do not refresh the flake.lock of the temp flake generated for the whole stack
     ...envnames: string # Envs to activate (will open a picker if none is given)
 ] {
@@ -337,11 +341,15 @@ def "main show" [] {
 # IMPORTANT: This does not touch the stack. If you want to update you current stack, run `envil switch -r' afterwards
 def "main update" [
     --unique (-u) # Whether to select just one environment
-    --statedir (-d): path = "" # Where to read the envil state from and write the updated flake.lock files. If empty, uses last used statedir
+    --statedir (-d): string = "" # Where to read the envil state from and write the updated flake.lock files. If empty, uses last used statedir
     ...envnames: string # Envs to update (will open a picker if none is given)
 ] {
     let state = get-state $statedir
+    if $state.statedir_is_flake? == true {
+        print $"(ansi red)Statedir is a flake. Run `nix flake update --flake ($state.statedir)` directly(ansi reset)"
+        error make {msg: "Cannot update statedir"}
+    }
     let envnames = select-envs $envnames $unique $state --verb "update" | insert update true
-    let flakepath = write-flakes $envnames "stack" true
+    write-flakes $envnames "stack" true
     print $"(ansi grey)Updated flake.lock files for env\(s) (ansi green)($envnames | get name)(ansi reset)"
 }

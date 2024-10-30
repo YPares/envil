@@ -64,7 +64,7 @@ export def output-flake [envname systems nixpkgs_key inputs outputs] {
                          buildEnv (r (c "A function to make an environment")
                                      $"imp.($nixpkgs_key).buildEnv")
                          envs (r (c $"Each environment used by env ($envname)")
-                                 (rec2a ({__selected: $"envs.($envname)"} | merge $outputs)))]
+                                 (rec2a $outputs))]
                         envs))))))))
 }
 
@@ -141,7 +141,7 @@ export def generate-flake [
 
     mut inputs = {}
     for i in ($input_urls | transpose key url) {
-        $inputs = $inputs | insert $"($i.key).url" $i.url
+        $inputs = $inputs | insert $"($i.key).url" (s $i.url)
         if ($i.key in $input_follow_links) {
             for l in ($input_follow_links | get $i.key | transpose src dest) {
                 $inputs = $inputs | insert $"($i.key).inputs.($l.src).follows" (s $l.dest)

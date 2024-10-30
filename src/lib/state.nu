@@ -17,10 +17,8 @@ def currents-path []: nothing -> path {
     ([~ .envil currents.nuon] | path join | path expand -n)
 }
 
-# Reads the state from the statedir.
-# Adds to this record a 'statedir' field, which contains the absolute path of the statedir
 export def get-state [
-    statedir: path
+    statedir: string
     --should-exist
 ]: nothing -> record {
     let statedir = if $statedir == "" {
@@ -30,7 +28,53 @@ export def get-state [
             print $"(ansi red)No statedir is known. Run with `-d' to use or create a statedir(ansi reset)"
             error make {msg: "No statedir"}
         }
-    } else {$statedir | path expand}
+    } else {
+        $statedir
+    }
+    let isFlake = ($statedir | str contains ":") or ($statedir | path join "flake.nix" | path exists)
+    if $isFlake {
+        let statedir = if ($statedir | str contains ":") {
+            $statedir
+        } else {
+            $"path:($statedir | path expand)"
+        }
+        load-state-from-flake $statedir
+    } else {
+        load-state-from-yaml ($statedir | path expand) $should_exist
+    }
+}
+
+def load-state-from-flake [
+    statedir: string
+] {
+    let packages = (
+        ^nix eval --impure --json --expr
+            $"with builtins; mapAttrs \(_k: pkg: pkg.name or \"no description\") \(getFlake \"($statedir)\").packages.${currentSystem}"
+    ) | from json
+    {
+        inputs: {
+            source: $statedir
+        }
+        envs: ($packages | columns | each {|attr|
+                {
+                    $attr: {
+                        description: ($packages | get $attr)
+                        contents: {
+                            source:
+                                [$attr]
+                        }
+                    }
+                }
+            } | into record)
+        statedir_is_flake: true
+        statedir: $statedir
+    }
+}
+
+def load-state-from-yaml [
+    statedir: string
+    should_exist
+]: nothing -> record {
     if (not ($statedir | path exists)) {
         if $should_exist {
             error make {msg: $"Dir ($statedir) does not exist"}
