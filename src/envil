@@ -120,9 +120,11 @@ def write-flakes [
 # Temporarily activate some envs by starting a subshell
 def "main shell" [
     --unique (-u) # Whether to select just one environment (in which case the env picker will come with a searchbar)
-    --empty (-e) # Whether to start a shell that contains nothing, to hide the current stack. Implies --isolated
     --statedir (-d): string = "" # Where to read the envil state from. If empty, will use the last used statedir
-    --isolated (-i) # Whether to limit the PATH of the shell so it can only see the tools from the selected envs and standard UNIX paths
+    --no-stack (-S) # Whether to remove the envs of the stack from the PATH while you are in the shell
+                    # Might not work as expected depending on your shell config (as it may add to your PATH again when starting)
+    --isolated (-i) # Whether to limit the PATH of the shell so it can only see the tools from the selected envs and standard UNIX paths (implies -S)
+    --empty (-e) # Whether to start a shell that contains nothing, to hide the current stack (implies -i)
     --no-refresh (-R) # Do not refresh the flake.lock of the temp flake generated for the whole shell
     ...envnames: string # Envs to activate (will open a picker if none is given)
 ] {
@@ -133,11 +135,13 @@ def "main shell" [
     let state = get-state $statedir
     let envstack = if $empty {[]} else {select-envs $envnames $unique $state --verb "use in the subshell"}
     let flakeAndEnv = write-flakes $envstack "shell" (not $no_refresh)
-    let isolated_bit = if $isolated {"an isolated"} else {"a"}
-    print $"(ansi grey)Starting ($isolated_bit) subshell with env\(s) (ansi green)($envstack | get name)(ansi grey)...(ansi reset)"
+    let shell_bit = if $isolated {"an isolated subshell"} else if $no_stack {"a subshell (hiding the stack)"} else {"a subshell"}
+    print $"(ansi grey)Starting ($shell_bit) with env\(s) (ansi green)($envstack | get name)(ansi grey)...(ansi reset)"
     let merged_name = $envstack | get name | str join "+"
     let new_path = if $isolated {
         [/usr/local/sbin, /usr/local/bin, /usr/sbin, /usr/bin, /sbin, /bin]
+    } else if $no_stack {
+        $env.PATH | where {($in | path expand) != ($env.HOME | path join .envil current bin | path expand)}
     } else {
         $env.PATH
     }
@@ -146,7 +150,7 @@ def "main shell" [
         let nix_exe = (which nix).path.0
         PATH=$new_path SHELL_ENV=$merged_name run-external $nix_exe shell $"($flakeAndEnv.flakepath)#($flakeAndEnv.envname)"
     } catch {
-        print $"(ansi grey)Last subshell command exited with (ansi yellow)($env.LAST_EXIT_CODE)(ansi reset)"
+        print $"(ansi red)Last subshell command exited with errcode (ansi yellow)($env.LAST_EXIT_CODE)(ansi reset)"
     }
 }
 
