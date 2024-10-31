@@ -75,7 +75,7 @@ If the folder given to `-d` does not exist or is empty, `envil` will create it w
 Each environment present in your stack can come from a different statedir, thus allowing decomposition. You can for instance
 have your own personal statedir for tools only you use, install tools from public flakes on Github, and then have another statedir that is part of a git project
 and used by all the developers of that project. Nix `flake.lock` files ensure that all teammembers will use the exact same version
-of the same tools.
+of the same tools, and Nixpkgs `buildEnv` function will make sure you do not have conflicts (different executables with the same name) in your stack.
 
 Run `envil -h` to see all the commands available. For instance, if you clone that repository and `cd` into your local clone,
 you can run the following:
