@@ -62,8 +62,8 @@ are `envil push` and `envil pop` to add or remove envs from the stack, and `envi
 The second important concept is the notion of _statedir_. That is some directory that contains a config file representing the desired state of your environments.
 This file can be one of the following two:
 
-- an `envil-state.yaml` ("yaml statedir"): `envil` will generate a flake for each environment inside the statedir (in the `flakes` subfolder).
-- a `flake.nix` ("flake statedir"): `envil` will look at the attributes exported under `packages.<current_system>` and consider each one to be an environment.
+- either an `envil-state.yaml` ("yaml statedir"): `envil` will generate a flake for each environment inside the statedir (in the `flakes` subfolder).
+- or a `flake.nix` ("flake statedir"): `envil` will look at the attributes exported under `packages.<current_system>` and consider each one to be an environment.
 
 Therefore any regular Nix flake is directly usable as a statedir (including remote flakes, e.g. from Github), and in such case `envil` will not try to write anything in it.
 Note that if a statedir contains both files, `envil` will use the `flake.nix` and ignore the `envil-state.yaml`.
