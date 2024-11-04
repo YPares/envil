@@ -59,17 +59,23 @@ Don't forget to log out and back in after.
 `envil` manages environments as a _stack_. That means several envs can be activated at the same time. The main commands
 are `envil push` and `envil pop` to add or remove envs from the stack, and `envil show` to view the stack's current state.
 
-The second important concept is the notion of _statedir_. That is some directory that contains a config file representing the desired state of your environments.
-This file can be one of the following two:
+The second important concept is the notion of _statedir_. That is some directory that contains a configuration file that
+describes the desired _state_ of your environments. This file can be one of the following two:
 
-- either an `envil-state.yaml` ("yaml statedir"): `envil` will generate a flake for each environment inside the statedir (in the `flakes` subfolder).
-- or a `flake.nix` ("flake statedir"): `envil` will look at the attributes exported under `packages.<current_system>` and consider each one to be an environment.
+- either an `envil-state.yaml` ("yaml statedir"): `envil` will generate a flake for each environment inside the statedir
+  (in the `flakes` subfolder). Each env has its own flake, so envs are locked separately.
+- or a `flake.nix` ("flake statedir"): `envil` will look at the attributes exported under `packages.<current_system>` and
+  consider each one to be an environment. All the envs are in the same flake, so envs are locked together.
 
-Therefore any regular Nix flake is directly usable as a statedir (including remote flakes, e.g. from Github), and in such case `envil` will not try to write anything in it.
+Therefore any regular Nix flake is directly usable as a statedir, and in such case `envil` will use it as is, in a readonly
+fashion, so it's up to you to write it and update its lockfile as you see fit. This allows to use remote flakes too (e.g. from Github)
+without having to pre-clone them locally. On the other hand, _yaml_ statedirs must be local, writeable directories.
+
 Note that if a statedir contains both files, `envil` will use the `flake.nix` and ignore the `envil-state.yaml`.
 
-Most `envil` subcommands take a `-d` argument to select which statedir to read env descriptions from (regardless of whether it is a yaml or flake statedir),
+Most `envil` subcommands take a `-d` argument to select which statedir to operate with (regardless of whether it is a yaml or flake statedir),
 and register it as the _current_ statedir so you don't have to repeat it everytime.
+
 If the folder given to `-d` does not exist or is empty, `envil` will create it with a default `envil-state.yaml` that you can then edit.
 
 Each environment present in your stack can come from a different statedir, thus allowing decomposition. You can for instance
@@ -158,4 +164,3 @@ just the classic boilerplate needed to define a top-level flake with some `pkgs.
 
 Contrary to `nix profile`, `envil` will not do anything to track versions of environments via a history.
 Given it represents its configuration as a simple yaml file or as flakes, versioning can just be done with `git`.
-
