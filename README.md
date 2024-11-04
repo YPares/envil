@@ -86,8 +86,9 @@ you can run the following:
   Register `examples/statedir` as the current statedir.
 - `envil push`: select an env from the current statedir (no `-d` was given) to add to the top of the env stack.
   Globally add to your `PATH` the executables it contains
-- `envil pop`: deactivate the last env added to the stack
-- `envil show` (or just `envil`): show the current statedir, the currently activated envs, the bins in the PATH, and the envs
+- `envil pop`: remove the last env added to the stack
+- `envil toggle`: toggle on/off some environments in the stack (same effect than push/pop, but it's easier to reactivate them afterwards)
+- `envil show` (or just `envil`): show the current statedir, the envs in the stack, the bins in the PATH, and the envs
   activated in the current subshell (if any). The source (statedir of origin) of each environment is also indicated, with a flake URL if the
   statedir is a Nix flake, and a regular absolute path if it is a yaml statedir
 - `envil update`: update the flake.lock files for some environments in the current statedir. This is only for yaml statedirs.

@@ -12,7 +12,7 @@ def select-envs [
     unique: bool
     state: record<envs: any>
     --verb: string = "use"
-] {
+]: nothing -> table<name: string, source: string, active: bool> {
     if ($preselected | is-empty) {
         let statedir_bit = if $state.statedir? != null {
             $" \(from (ansi yellow)`($state.statedir)'(ansi reset)) "
@@ -43,7 +43,10 @@ def select-envs [
             get name
     } else {
         $preselected
-    } | wrap name | insert source $state.statedir?
+    } |
+    wrap name |
+    insert source $state.statedir? |
+    insert active true
 }
 
 # Print out the flake that will generate an env
@@ -79,17 +82,19 @@ def write-flakes [
     refresh_tmp_flake: bool
 ] nothing -> record<envname: string, flakepath: string> {
     let flakes = $environments | each {|env_|
-        let state = get-state $env_.source
-        if $state.statedir_is_flake? == true {
-            {envname: $env_.name, flakepath: $env_.source}
-        } else {
-            let flakepath = [$env_.source flakes $env_.name] | path join
-            mkdir $flakepath
-            generate-flake $env_.name $state | save -rf ([$flakepath flake.nix] | path join)
-            if (not ([$flakepath flake.lock] | path join | path exists) or $env_.update? == true) {
-                do-update $"path:($flakepath)"
+        if ($env_.active? == true) {
+            let state = get-state $env_.source
+            if $state.statedir_is_flake? == true {
+                {envname: $env_.name, flakepath: $env_.source}
+            } else {
+                let flakepath = [$env_.source flakes $env_.name] | path join
+                mkdir $flakepath
+                generate-flake $env_.name $state | save -rf ([$flakepath flake.nix] | path join)
+                if (not ([$flakepath flake.lock] | path join | path exists) or $env_.update? == true) {
+                    do-update $"path:($flakepath)"
+                }
+                {envname: $env_.name, flakepath: $"path:($flakepath)"}
             }
-            {envname: $env_.name, flakepath: $"path:($flakepath)"}
         }
     }
     if ($flakes | length) == 1 {
@@ -257,6 +262,19 @@ def "main pop" [
     }
 }
 
+# Activate/deactivate some envs in the stack. Similar to push/pop, but with a quicker workflow
+def "main toggle" [
+    --unique (-u) # Whether to select just one environment (in which case the env picker will come with a searchbar)
+    ...envnames: string # Which envs to toggle
+] {
+    let currents = get-currents
+    let fake_state = { envs: ($currents.envstack | get name | each {{$in: ""}} | into record) }
+    let selected = select-envs $envnames $unique $fake_state --verb "toggle" | get name
+    let new_stack = $currents.envstack | each {|env_| update active {if ($env_.name in $selected) {not $in} else {$in}}}
+    do-switch $new_stack $currents.statedir false
+    show-stack
+}
+
 # Move an env of the stack to a certain position. Use --bottom to move it to the lowermost position
 def "main move" [
     envname: string # Which env to move
@@ -282,9 +300,16 @@ def "main move" [
     show-stack
 }
 
+def grey-out-inactives [] {
+    each {|env_|
+        let fn = {if $env_.active? == true {$in} else {$"(ansi grey)($in)(ansi reset)"}}
+        $env_ | update name $fn | update source $fn | update active $fn
+    }
+}
+
 def show-stack [] {
     print $"(ansi grey)Env stack is now:(ansi reset)"
-    (get-currents).envstack | reverse
+    (get-currents).envstack | reverse | grey-out-inactives
 }
 
 def ls-filenames [folder: path] {
@@ -319,7 +344,7 @@ def "main show" [] {
     {
         "Current statedir": $currents.statedir?
         "Env stack": (if ($bindir in $env.PATH) {
-                $currents.envstack | reverse
+                $currents.envstack | reverse | grey-out-inactives
             } else {
                 "(not in PATH)"
             })

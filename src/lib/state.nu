@@ -134,5 +134,7 @@ export def get-currents [] {
         open (currents-path)
     } catch {
         {}
-    } | upsert envstack {or-else []}
+    } |
+    upsert envstack {or-else []} |
+    update envstack {upsert active {or-else true}}
 }
