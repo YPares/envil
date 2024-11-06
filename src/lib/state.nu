@@ -31,15 +31,13 @@ export def get-state [
     } else {
         $statedir
     }
-    let isFlake = ($statedir | str contains ":") or ($statedir | path join "flake.nix" | path exists)
-    if $isFlake {
-        let statedir = if ($statedir | str contains ":") {
-            $statedir
-        } else {
-            $"path:($statedir | path expand)"
-        }
+    if ($statedir | str contains ":") { # statedir is already a flake URL
         load-state-from-flake $statedir
-    } else {
+    } else if ($statedir | path join "flake.nix" | path exists) { # statedir is a path to a local flake
+        # We first resolve the full flake URL, because builtins.getFlake doesn't accept relative paths:
+        let statedir = ^nix flake metadata $statedir --json | from json | get originalUrl
+        load-state-from-flake $statedir
+    } else { # statedir is yaml
         load-state-from-yaml ($statedir | path expand) $should_exist
     }
 }
