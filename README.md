@@ -120,13 +120,19 @@ Run `nix profile upgrade envil --refresh` to update `envil` to the latest versio
 
 ## Pushing your current stack to a binary cache
 
-If you have `cachix` installed and if you did set up a cache on <https://www.cachix.org>, run:
+If you use `cachix` and if you set up a cache on <https://www.cachix.org>, run:
 
 ```sh
 cachix push <cache_name> $HOME/.envil/current
 ```
 
 Anybody who runs `cachix use <cache_name>` and switches to the same env(s) than you will benefit from the binary cache.
+
+If you are using an [external store](https://nix.dev/manual/nix/2.25/store/types/) as a binary cache, you can use `nix copy`:
+
+```sh
+nix copy $HOME/.envil/current --to "<cache_url>"
+```
 
 ## Notes about versioning and workflow
 
