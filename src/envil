@@ -80,7 +80,7 @@ def write-flakes [
     environments: table<source: string, name: string>
     tmp_flake_name: string
     refresh_tmp_flake: bool
-] nothing -> record<envname: string, flakepath: string> {
+] : nothing -> record<envname: string, flakepath: string> {
     let flakes = $environments | each {|env_|
         if ($env_.active? != false) {
             let state = get-state $env_.source

@@ -11,7 +11,7 @@
   };
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
   };
 
   outputs = inputs:
@@ -28,7 +28,7 @@
 
           envil = imp.nixpkgs.writeShellApplication {
             name = "envil";
-            runtimeInputs = with imp.nixpkgs; [nushell jsonschema nixfmt-classic];
+            runtimeInputs = with imp.nixpkgs; [nushell jsonschema nixfmt-rfc-style];
             text = ''nu -n ${./src}/envil "$@"'';
           } ;
         });
