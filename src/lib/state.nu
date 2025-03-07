@@ -89,11 +89,13 @@ def load-state-from-yaml [
         $defstate
     }
 
-    try {
-        let schema_path = [($env.CURRENT_FILE | path dirname) envil-state-schema.json] | path join
-        ^jv $schema_path $statefile
-    } catch {
-        print $"(ansi red)($statefile) is not a valid envil state file. See validator errors above(ansi reset)"
+    let schema_path = [($env.CURRENT_FILE | path dirname) envil-state-schema.json] | path join
+    let jv_out = ^jv $schema_path $statefile | complete
+    if $jv_out.exit_code != 0 {
+        print $"(ansi red)($statefile) is not a valid envil state file:(ansi reset)"
+        print $"(ansi red)|(ansi reset)"
+        print ($jv_out.stdout | lines | each { $"(ansi red)|(ansi reset) ($in)" } | str join (char newline))
+        print ""
         error make {msg: "Failed to validate state file"}
     }
     
