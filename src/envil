@@ -36,9 +36,11 @@ def select-envs [
             } |
             sort-by -i name |
             if $unique {
-                input list -d description -f $prompt | [$in]
+                input list -d description -f $prompt |
+                if ($in == null) {[]} else {[$in]}
             } else {
-                input list -d description -m $prompt_multi
+                input list -d description -m $prompt_multi |
+                default []
             } |
             get name
     } else {
