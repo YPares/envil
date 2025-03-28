@@ -3,6 +3,21 @@
 use lib/gen-flake.nu *
 use lib/state.nu *
 
+$env.config.color_config = {
+    duration: default
+    string: default
+    cell-path: default
+    binary: default
+    separator: default
+    list: default
+    record: default
+    float: default
+    range: default
+    int: default
+    nothing: default
+    block: default
+}
+
 def main [] {
     main show
 }
