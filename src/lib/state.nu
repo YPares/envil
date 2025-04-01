@@ -17,11 +17,13 @@ def currents-path []: nothing -> path {
     ([~ .envil currents.nuon] | path join | path expand -n)
 }
 
-export def get-state [
-    statedir: string
-    --should-exist
-]: nothing -> record {
-    let statedir = if $statedir == "" {
+export def with-resolved-statedir [
+    unresolved_statedir: string = ""
+    --on-flake-url: closure
+    --on-flake-state: closure
+    --on-yaml-state: closure
+] {
+    let statedir = if $unresolved_statedir == "" {
         try {
             open (currents-path) | get statedir
         } catch {
@@ -29,17 +31,37 @@ export def get-state [
             error make {msg: "No statedir"}
         }
     } else {
-        $statedir
+        $unresolved_statedir
     }
-    if ($statedir | str contains ":") { # statedir is already a flake URL
-        load-state-from-flake $statedir
-    } else if ($statedir | path join "flake.nix" | path exists) { # statedir is a path to a local flake
-        # We first resolve the full flake URL, because builtins.getFlake doesn't accept relative paths:
-        let statedir = ^nix flake metadata $statedir --json | from json | get originalUrl
-        load-state-from-flake $statedir
-    } else { # statedir is yaml
-        load-state-from-yaml ($statedir | path expand) $should_exist
+    if ($statedir | str contains ":") {
+        # statedir is already a flake URL
+        do $on_flake_url $statedir
+    } else if ($statedir | path join "flake.nix" | path exists) {
+        # statedir is a path to a local flake
+        do $on_flake_state $statedir
+    } else {
+        # statedir is yaml
+        do $on_yaml_state $statedir
     }
+}
+
+export def get-state [
+    unresolved_statedir: string
+    --should-exist
+]: nothing -> record {
+    ( with-resolved-statedir $unresolved_statedir
+        --on-flake-url {|statedir|
+            load-state-from-flake $statedir
+        }
+        --on-flake-state {|statedir|
+            # We first resolve the full flake URL, because builtins.getFlake doesn't accept relative paths:
+            let statedir = ^nix flake metadata $statedir --json | from json | get originalUrl
+            load-state-from-flake $statedir
+        }
+        --on-yaml-state  {|statedir|
+            load-state-from-yaml ($statedir | path expand) $should_exist
+        }
+    )
 }
 
 def load-state-from-flake [
