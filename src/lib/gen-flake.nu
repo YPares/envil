@@ -9,7 +9,7 @@ def get-input-pkgs [prefix pkg_list] {
     $pkg_list | each {|p|
         if (($p | describe) == "string") {
             if ($p | str contains " ") {
-                $"\(($p))"
+                $"\(\(with ($prefix); ($p)))"
             } else {
                 $"($prefix).($p)"
             }
