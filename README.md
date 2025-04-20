@@ -25,9 +25,8 @@ It is important to note that `envil` is **not** a tool to:
 - install and manage Nix for you,
 - write complicated Nix logic for you.
 
-If you already know and use Nix, `envil` aims at being an alternative to the `nix profile` command which makes it inconvenient to work with
-multiple profiles and contributes to cluttering your PATH. Conversely, `envil` enables you and incites you to be selective and to
-quickly switch between environments or start shells to avoid situations where you end up with two different versions
+If you already know and use Nix, `envil` builds upon Nix profiles, to enable you and incite you to be selective about what you put in your `PATH`, to
+quickly switch between environments, and to start shells to avoid situations where you end up with two different versions
 of the same tool in your `PATH`, or things like two different `python` installations but each one configured with its own libraries,
 leaving you unable to select which one you want.
 
@@ -48,8 +47,8 @@ nix profile install github:YPares/envil#envil
 
 to have `envil` available in your `PATH`. Alternatively, you can run `nix run github:YPares/envil` everytime you want to use `envil`.
 
-Finally, add `$HOME/.envil/current/bin` to your `PATH`. This is the directory in which envil will install and swap the binaries of your
-current environment.
+Finally, add `$HOME/.envil/current/bin` to your `PATH`. This is the directory in which envil will manage a Nix profile for you,
+by swapping in and out the binaries of your current environment(s).
 
 Note: if you are using Linux, it's better to set your `PATH` in your `$HOME/.pam_environment` or `$HOME/.profile` so other programs than your terminal can see the updated `PATH`.
 Don't forget to log out and back in after.
