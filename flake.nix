@@ -31,6 +31,8 @@
             runtimeInputs = with imp.nixpkgs; [nushell jsonschema nixfmt-rfc-style];
             text = ''nu -n ${./src}/envil "$@"'';
           } ;
+
+          pkgs = imp.nixpkgs;
         });
     };
 }
