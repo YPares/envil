@@ -181,6 +181,7 @@ def "main run" [
 def do-switch [
     envstack: table<source: string, name: string>
     statedir: string
+    --remove-all
 ] {
     use lib/nix-printer.nu *
 
@@ -196,9 +197,12 @@ def do-switch [
     }
     let profile = [~ .envil current] | path join | path expand -n
     print $"(ansi grey)Updating nix-env profile ($profile)(ansi reset)"
-    rm -f $profile  # So that old symlinks from before switching to nix profiles don't cause issues
-    ^nix-env --profile $profile --remove-all --install --from-expression ...$exprs
-    set-currents --envstack $envstack --statedir $statedir
+    ( ^nix-env --profile $profile
+        ...(if $remove_all {[--remove-all]} else {[]})
+        --install --from-expression ...$exprs
+    )
+    print $"(ansi grey)Removing old generations(ansi reset)"
+    ^nix-env --profile $profile --delete-generations '+5'
 }
 
 # Switch to a new stack, or reload the current one from statedirs
@@ -214,7 +218,8 @@ def "main switch" [
     } else {
         select-envs $envnames $unique $state --verb "switch to"
     }
-    do-switch $new_stack $state.statedir
+    do-switch $new_stack
+    set-currents --envstack $new_stack --statedir $state.statedir
     show-stack
 }
 
@@ -226,8 +231,9 @@ def "main push" [
 ] {
     let state = get-state $statedir
     let stack = (get-currents).envstack
-    let new_stack = select-envs $envnames $unique ($state | update envs {reject -i ...($stack | get name)}) --verb "add to the stack"
-    do-switch ($stack ++ $new_stack) $state.statedir
+    let additions = select-envs $envnames $unique ($state | update envs {reject -i ...($stack | get name)}) --verb "add to the stack"
+    do-switch --append $additions
+    set-currents --envstack ($stack ++ $additions) --statedir $state.statedir
     show-stack
 }
 
@@ -264,7 +270,8 @@ def "main pop" [
             let removed = select-envs $envnames false $fake_state --verb "remove" | get name
             $currents.envstack | where {not ($in.name in $removed)}
         }
-        do-switch $new_stack $currents.statedir
+        do-switch --remove-all $new_stack $currents.statedir
+        set-currents --envstack $new_stack --statedir $currents.statedir
         show-stack
     }
 }
@@ -278,7 +285,8 @@ def "main toggle" [
     let fake_state = { envs: ($currents.envstack | get name | each {{$in: ""}} | into record) }
     let selected = select-envs $envnames $unique $fake_state --verb "toggle" | get name
     let new_stack = $currents.envstack | each {|env_| update active {if ($env_.name in $selected) {not $in} else {$in}}}
-    do-switch $new_stack $currents.statedir
+    do-switch $new_stack
+    set-currents --envstack $new_stack --statedir $currents.statedir
     show-stack
 }
 
