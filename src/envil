@@ -137,7 +137,7 @@ def "main shell" [
     let new_path = if $isolated {
         [/usr/local/sbin, /usr/local/bin, /usr/sbin, /usr/bin, /sbin, /bin]
     } else if $no_stack {
-        $env.PATH | where {($in | path expand) != ($env.HOME | path join .envil current bin | path expand)}
+        $env.PATH | where {($in | path expand) != (nixprof | path expand)}
     } else {
         $env.PATH
     }
@@ -178,10 +178,13 @@ def "main run" [
     }
 }
 
+def nixprof [] {
+    [~ .envil current] | path join | path expand -n
+}
+
 def do-switch [
     envstack: table<source: string, name: string>
-    statedir: string
-    --remove-all
+    --append
 ] {
     use lib/nix-printer.nu *
 
@@ -195,14 +198,19 @@ def do-switch [
         ] | str join ""
         )
     }
-    let profile = [~ .envil current] | path join | path expand -n
-    print $"(ansi grey)Updating nix-env profile ($profile)(ansi reset)"
-    ( ^nix-env --profile $profile
-        ...(if $remove_all {[--remove-all]} else {[]})
+    let profile = (nixprof)
+    let envstack = $envstack | where active?
+    let envs_bit = $"(ansi yellow)($envstack | get name | str join ' ')(ansi reset)"
+    if $append {
+        print $"Adding env\(s) ($envs_bit)"
+    } else {
+        print $"Replacing stack with env\(s) ($envs_bit)"
+    }
+    ( ^nix-env --profile $profile --quiet
+        ...(if not $append {[--remove-all]} else {[]})
         --install --from-expression ...$exprs
     )
-    print $"(ansi grey)Removing old generations(ansi reset)"
-    ^nix-env --profile $profile --delete-generations '+5'
+    ^nix-env --profile $profile --delete-generations '+5' --quiet
 }
 
 # Switch to a new stack, or reload the current one from statedirs
@@ -220,7 +228,6 @@ def "main switch" [
     }
     do-switch $new_stack
     set-currents --envstack $new_stack --statedir $state.statedir
-    show-stack
 }
 
 # Add new envs on top of the stack
@@ -234,7 +241,6 @@ def "main push" [
     let additions = select-envs $envnames $unique ($state | update envs {reject -i ...($stack | get name)}) --verb "add to the stack"
     do-switch --append $additions
     set-currents --envstack ($stack ++ $additions) --statedir $state.statedir
-    show-stack
 }
 
 # Remove the top env(s) from the stack
@@ -250,7 +256,9 @@ def "main pop" [
     if ($currents.envstack | is-empty) {
         print $"(ansi grey)Nothing to pop(ansi reset)"
     } else {
-        let new_stack = if ((not $select) and ($all or $number > 0 or ($envnames | is-empty))) {
+        mut removed = []
+        mut new_stack = $currents.envstack
+        if ((not $select) and ($all or $number > 0 or ($envnames | is-empty))) {
             let number = if $all {
                 $currents.envstack | length
             } else if $number > 0 {
@@ -258,7 +266,8 @@ def "main pop" [
             } else {
                 1
             }
-            $currents.envstack | drop $number
+            $removed = $currents.envstack | slice ($number * -1).. | get name
+            $new_stack = $currents.envstack | drop $number
         } else {
             let invalid = $envnames | where {not ($in in ($currents.envstack | get name))}
             if (not ($invalid | is-empty)) {
@@ -267,12 +276,12 @@ def "main pop" [
             }
             # We don't select envs from the state but from the stack
             let fake_state = { envs: ($currents.envstack | get name | each {{$in: ""}} | into record) }
-            let removed = select-envs $envnames false $fake_state --verb "remove" | get name
-            $currents.envstack | where {not ($in.name in $removed)}
+            $removed = select-envs $envnames false $fake_state --verb "remove" | get name
+            $new_stack = $currents.envstack | where {not ($in.name in $removed)}
         }
-        do-switch --remove-all $new_stack $currents.statedir
-        set-currents --envstack $new_stack --statedir $currents.statedir
-        show-stack
+        print $"Removing env\(s) (ansi yellow)($removed | str join ' ')(ansi reset)"
+        ^nix-env --profile (nixprof) --uninstall ...($removed | each {$"($in)-envil"}) --quiet
+        set-currents --envstack $new_stack
     }
 }
 
@@ -287,7 +296,6 @@ def "main toggle" [
     let new_stack = $currents.envstack | each {|env_| update active {if ($env_.name in $selected) {not $in} else {$in}}}
     do-switch $new_stack
     set-currents --envstack $new_stack --statedir $currents.statedir
-    show-stack
 }
 
 # Move an env of the stack to a certain position. Use --bottom to move it to the lowermost position
@@ -312,7 +320,6 @@ def "main move" [
         }
     let stack = $stack | insert $new_position $env_
     set-currents --envstack ($stack | reverse)
-    show-stack
 }
 
 def grey-out-inactives [] {
@@ -320,11 +327,6 @@ def grey-out-inactives [] {
         let fn = {if $env_.active? == true {$in} else {$"(ansi grey)($in)(ansi reset)"}}
         $env_ | update name $fn | update source $fn | update active $fn
     }
-}
-
-def show-stack [] {
-    print $"(ansi grey)Env stack is now:(ansi reset)"
-    (get-currents).envstack | reverse | grey-out-inactives
 }
 
 def ls-filenames [folder: path] {
@@ -355,7 +357,7 @@ def "main duplicates" [
 # Print out the current state of the stack & bins in the PATH, and the same for the current subshell (if any)
 def "main show" [] {
     let currents = get-currents
-    let bindir = [~ .envil current bin] | path join | path expand -n
+    let bindir = [(nixprof) bin] | path join
     {
         "Current statedir": $currents.statedir?
         "Env stack": (if ($bindir in $env.PATH) {
