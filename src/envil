@@ -322,6 +322,60 @@ def "main move" [
     set-currents --envstack ($stack | reverse)
 }
 
+# Make bulk updates to the stack via a temporary file
+def "main stack" [
+    --statedir (-d): string = "" # Statedir where to look for newly added envs
+] {
+    let state = get-state $statedir
+    let stack = (get-currents).envstack
+    let tmp_dir = mktemp -d
+    let script = $tmp_dir | path join "envil-stack.yaml"
+    [
+        "### Edit the following entries to add, remove or reorder envs from your stack:"
+        ""
+        ...($stack | reverse | each {
+                if $in.source == $state.statedir {
+                    reject source
+                } else {
+                    $in
+                } | if $in.active {
+                    reject active
+                } else {
+                    $in
+                } | if ($in | columns) == ["name"] {
+                    get name
+                } else {
+                    $in
+                }
+            } | to yaml | lines)
+        ""
+        $"### The following envs are available in ($state.statedir):"
+        ""
+        ...($state.envs | columns | each {$"# - ($in)"})
+        ""
+    ] | str join "\n" | save $script
+    run-external $env.EDITOR $script
+    let new_stack = open $script | reverse | each {|entry|
+        if ($entry | describe) == "string" {
+            {name: $entry, source: $state.statedir, active: true}
+        } else {
+            $entry | default $state.statedir source | default true active
+        }
+    }
+    rm -rf $tmp_dir
+    let join = $new_stack | rename -c {active: in_new} |
+                join --outer ($stack | rename -c {active: in_old}) name
+    let to_rm = $join | where {|e| $e.in_old and not $e.in_new} | get name
+    let to_add = $join | where {|e| $e.in_new and not $e.in_old} | get name
+    if not ($to_rm | is-empty) {
+        main pop ...$to_rm
+    }
+    if not ($to_add | is-empty) {
+        main push --statedir $state.statedir ...$to_add
+    }
+    set-currents --envstack $new_stack --statedir $state.statedir
+}
+
 def grey-out-inactives [] {
     each {|env_|
         let fn = {if $env_.active? == true {$in} else {$"(ansi grey)($in)(ansi reset)"}}
