@@ -401,7 +401,7 @@ def "main update" [
 }
 
 # Edit the current statedir config file and refresh the stack
-def "main edit" [
+def "main config" [
     --statedir (-d): string = "" # Where to read and write the envil state. If empty, uses last used statedir
     --no-refresh (-R) # Do not refresh the stack after editing
 ] {
