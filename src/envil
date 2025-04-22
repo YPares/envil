@@ -202,7 +202,9 @@ def do-switch [
     let envstack = $envstack | where active?
     let envs_bit = $"(ansi yellow)($envstack | get name | str join ' ')(ansi reset)"
     if $append {
-        print $"Adding env\(s) ($envs_bit)"
+        if not ($envstack | is-empty) {
+            print $"Adding env\(s) ($envs_bit)"
+        }
     } else {
         print $"Replacing stack with env\(s) ($envs_bit)"
     }
@@ -211,6 +213,15 @@ def do-switch [
         --install --from-expression ...$exprs
     )
     ^nix-env --profile $profile --delete-generations '+5' --quiet
+}
+
+def do-remove [removed: list<string>] {
+    if not ($removed | is-empty) {
+        let profile = nixprof
+        print $"Removing env\(s) (ansi yellow)($removed | str join ' ')(ansi reset)"
+        ^nix-env --profile $profile --uninstall ...($removed | each {$"($in)-envil"}) --quiet
+        ^nix-env --profile $profile --delete-generations '+5' --quiet
+    }
 }
 
 # Switch to a new stack, or reload the current one from statedirs
@@ -279,8 +290,7 @@ def "main pop" [
             $removed = select-envs $envnames false $fake_state --verb "remove" | get name
             $new_stack = $currents.envstack | where {not ($in.name in $removed)}
         }
-        print $"Removing env\(s) (ansi yellow)($removed | str join ' ')(ansi reset)"
-        ^nix-env --profile (nixprof) --uninstall ...($removed | each {$"($in)-envil"}) --quiet
+        do-remove $removed
         set-currents --envstack $new_stack
     }
 }
@@ -293,9 +303,14 @@ def "main toggle" [
     let currents = get-currents
     let fake_state = { envs: ($currents.envstack | get name | each {{$in: ""}} | into record) }
     let selected = select-envs $envnames $unique $fake_state --verb "toggle" | get name
-    let new_stack = $currents.envstack | each {|env_| update active {if ($env_.name in $selected) {not $in} else {$in}}}
-    do-switch $new_stack
-    set-currents --envstack $new_stack --statedir $currents.statedir
+    let new_stack = $currents.envstack |
+        insert selected {$in.name in $selected} |
+        update active {|e|
+            if ($e.selected) {not $e.active} else {$e.active}
+        }
+    do-remove ($new_stack | where {$in.selected and not $in.active} | get name)
+    do-switch --append ($new_stack | where {$in.selected and $in.active})
+    set-currents --envstack ($new_stack | reject selected)
 }
 
 # Move an env of the stack to a certain position. Use --bottom to move it to the lowermost position
@@ -364,15 +379,12 @@ def "main stack" [
     }
     rm -rf $tmp_dir
     let join = $new_stack | rename -c {active: in_new} |
-                join --outer ($stack | rename -c {active: in_old}) name
-    let to_rm = $join | where {|e| $e.in_old and not $e.in_new} | get name
-    let to_add = $join | where {|e| $e.in_new and not $e.in_old} | get name
-    if not ($to_rm | is-empty) {
-        main pop ...$to_rm
-    }
-    if not ($to_add | is-empty) {
-        main push --statedir $state.statedir ...$to_add
-    }
+        join --outer ($stack | rename -c {active: in_old}) name |
+        default false in_new | default false in_old
+    let to_rm = $join | where {|e| $e.in_old and not $e.in_new}
+    let to_add = $join | where {|e| $e.in_new and not $e.in_old}
+    do-remove ($to_rm | get name)
+    do-switch --append ($to_add | insert active true)
     set-currents --envstack $new_stack --statedir $state.statedir
 }
 
