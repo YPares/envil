@@ -249,7 +249,7 @@ def "main push" [
 ] {
     let state = get-state $statedir
     let stack = (get-currents).envstack
-    let additions = select-envs $envnames $unique ($state | update envs {reject -i ...($stack | get name)}) --verb "add to the stack"
+    let additions = select-envs $envnames $unique ($state | update envs {reject -o ...($stack | get name)}) --verb "add to the stack"
     do-switch --append $additions
     set-currents --envstack ($stack ++ $additions) --statedir $state.statedir
 }
