@@ -22,6 +22,42 @@ def main [] {
     main show
 }
 
+# Check if adding envs to the stack would conflict with existing envs via extends relationships
+# Returns filtered list of envs to add, with warnings printed for conflicts
+def check-extends-conflicts [
+    envs_to_add: table<name: string, source: string, active: bool>
+    current_stack: table<name: string, source: string, active: bool>
+    state: record<envs: any>
+]: nothing -> table<name: string, source: string, active: bool> {
+    mut result = []
+
+    for env_to_add in $envs_to_add {
+        let extends_closure = get-extends-closure $env_to_add.name $state
+
+        # Check if any env in stack is extended by this env
+        let conflicts_extended = $current_stack | where {|stack_env|
+            $stack_env.name in $extends_closure
+        }
+
+        # Check if any env in stack extends this env
+        let conflicts_extending = $current_stack | where {|stack_env|
+            $env_to_add.name in (get-extends-closure $stack_env.name $state)
+        }
+
+        if (not ($conflicts_extended | is-empty)) {
+            let conflict_names = $conflicts_extended | get name | str join ", "
+            print $"(ansi yellow)Warning: ($env_to_add.name) extends ($conflict_names) which (if ($conflicts_extended | length) > 1 {"are"} else {"is"}) already in stack. Use `envil swap ($conflict_names) ($env_to_add.name)` to replace(ansi reset)"
+        } else if (not ($conflicts_extending | is-empty)) {
+            let conflict_names = $conflicts_extending | get name | str join ", "
+            print $"(ansi yellow)Warning: ($env_to_add.name) is already included in ($conflict_names). Use `envil swap ($conflict_names) ($env_to_add.name)` to replace(ansi reset)"
+        } else {
+            $result = $result | append $env_to_add
+        }
+    }
+
+    $result
+}
+
 def select-envs [
     preselected: list<string>
     unique: bool
@@ -251,8 +287,11 @@ def "main push" [
     let state = get-state $statedir
     let stack = (get-currents).envstack
     let additions = select-envs $envnames $unique ($state | update envs {reject -o ...($stack | get name)}) --verb "add to the stack"
-    do-switch --append $additions
-    set-currents --envstack ($stack ++ $additions) --statedir $state.statedir
+    let additions = check-extends-conflicts $additions $stack $state
+    if (not ($additions | is-empty)) {
+        do-switch --append $additions
+        set-currents --envstack ($stack ++ $additions) --statedir $state.statedir
+    }
 }
 
 # Remove the top env(s) from the stack
@@ -302,16 +341,88 @@ def "main toggle" [
     ...envnames: string # Which envs to toggle
 ] {
     let currents = get-currents
+    let state = get-state ""
     let fake_state = { envs: ($currents.envstack | get name | each {{$in: ""}} | into record) }
     let selected = select-envs $envnames $unique $fake_state --verb "toggle" | get name
-    let new_stack = $currents.envstack |
+    mut new_stack = $currents.envstack |
         insert selected {$in.name in $selected} |
         update active {|e|
             if ($e.selected) {not $e.active} else {$e.active}
         }
+
+    # Check for conflicts when activating envs
+    let envs_being_activated = $new_stack | where {$in.selected and $in.active}
+    let currently_active = $new_stack | where {not $in.selected and $in.active}
+    let checked_activations = check-extends-conflicts $envs_being_activated $currently_active $state
+
+    # Update new_stack to reflect filtered activations
+    $new_stack = $new_stack | update active {|e|
+        if ($e.selected and $e.active) {
+            $e.name in ($checked_activations | get name)
+        } else {
+            $e.active
+        }
+    }
+
     do-remove ($new_stack | where {$in.selected and not $in.active} | get name)
     do-switch --append ($new_stack | where {$in.selected and $in.active})
     set-currents --envstack ($new_stack | reject selected)
+}
+
+# Swap an env in the stack with another from the statedir
+def "main swap" [
+    env_to_remove: string = "" # Which env to remove from the stack (will open a picker if empty)
+    env_to_add: string = "" # Which env to add from the statedir (will open a picker if empty)
+    --statedir (-d): string = "" # Where to read the envil state from. If empty, will use the last used statedir
+] {
+    let currents = get-currents
+    let state = get-state $statedir
+
+    # Select env to remove from stack
+    let env_to_remove = if ($env_to_remove | is-empty) {
+        if ($currents.envstack | is-empty) {
+            print $"(ansi red)Stack is empty, nothing to swap(ansi reset)"
+            return
+        }
+        let fake_state = { envs: ($currents.envstack | get name | each {{$in: ""}} | into record), statedir: null }
+        select-envs [] true $fake_state --verb "remove from stack" | get 0.name
+    } else {
+        $env_to_remove
+    }
+
+    # Verify env_to_remove is in stack
+    let removed_env = try {
+        $currents.envstack | where {$in.name == $env_to_remove} | get 0
+    } catch {
+        print $"(ansi red)Env `($env_to_remove)' is not in the stack(ansi reset)"
+        return
+    }
+
+    # Select env to add from statedir (filter out envs already in stack)
+    let env_to_add = if ($env_to_add | is-empty) {
+        let stack_env_names = $currents.envstack | get name
+        select-envs [] true ($state | update envs {reject -o ...$stack_env_names}) --verb "add to stack" | get 0.name
+    } else {
+        $env_to_add
+    }
+
+    # Find position of env to remove
+    let position = $currents.envstack | enumerate | where {$in.item.name == $env_to_remove} | get 0.index
+
+    # Remove the old env from nix profile
+    do-remove [$env_to_remove]
+
+    # Prepare the new env with correct source
+    let new_env = {name: $env_to_add, source: $state.statedir, active: true}
+
+    # Build the new stack: remove old env and insert new one at same position
+    let new_stack = $currents.envstack | reject $position | insert $position $new_env
+
+    # Add the new env to nix profile
+    do-switch --append [$new_env]
+
+    set-currents --envstack $new_stack --statedir $state.statedir
+    print $"(ansi green)Swapped ($env_to_remove) with ($env_to_add)(ansi reset)"
 }
 
 # Move an env of the stack to a certain position. Use --bottom to move it to the lowermost position
@@ -329,12 +440,7 @@ def "main move" [
     }
     let env_position = $env_.1
     let env_ = $env_.0
-    let stack = if $env_position == 0 {
-            $stack | slice (1..)
-        } else {
-            $stack | slice (0..($env_position - 1)) | append ($stack | slice (($env_position + 1)..))
-        }
-    let stack = $stack | insert $new_position $env_
+    let stack = $stack | reject $env_position | insert $new_position $env_
     set-currents --envstack ($stack | reverse)
 }
 

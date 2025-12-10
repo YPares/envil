@@ -168,3 +168,35 @@ export def get-currents [] {
     upsert envstack {or-else []} |
     update envstack {upsert active {or-else true}}
 }
+
+# Compute the transitive closure of environments that <envname> extends from
+export def get-extends-closure [
+    envname: string
+    state: record<envs: any>
+]: nothing -> list<string> {
+    mut result = []
+    mut to_visit = [$envname]
+    mut visited = {}
+
+    while (not ($to_visit | is-empty)) {
+        let current = $to_visit | first
+        $to_visit = $to_visit | skip 1
+
+        if ($current in $visited) {
+            continue
+        }
+        $visited = $visited | upsert $current true
+
+        let env_desc = try {
+            $state.envs | get $current
+        } catch {
+            continue
+        }
+
+        let extends = $env_desc.extends? | default []
+        $result = $result | append $extends
+        $to_visit = $to_visit | append $extends
+    }
+
+    $result | uniq
+}
