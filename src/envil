@@ -179,7 +179,8 @@ def "main run" [
 }
 
 def nixprof [] {
-    [~ .envil current] | path join | path expand -n
+    use lib/state.nu envil-dir
+    [(envil-dir) current] | path join
 }
 
 def do-switch [

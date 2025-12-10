@@ -12,9 +12,17 @@ const defstate = {
     }
 }
 
+export def envil-dir []: nothing -> path {
+    if ($env.ENVIL_STACK? != null) {
+        $env.ENVIL_STACK | path expand -n
+    } else {
+        [~ .envil] | path join | path expand -n
+    }
+}
+
 def currents-path []: nothing -> path {
-    mkdir ([~ .envil] | path join | path expand -n)
-    ([~ .envil currents.nuon] | path join | path expand -n)
+    mkdir (envil-dir)
+    [(envil-dir) currents.nuon] | path join
 }
 
 export def with-resolved-statedir [
