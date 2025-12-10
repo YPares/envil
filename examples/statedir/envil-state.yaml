@@ -41,7 +41,7 @@ envs:
   nushell:
     contents:
       nushellWith:
-        - nushellWithExtras
+        - nushellWithStdPlugins
       pkgs:
         - jq
   vcs:
