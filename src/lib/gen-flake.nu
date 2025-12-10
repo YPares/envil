@@ -24,7 +24,7 @@ def get-input-pkgs [prefix pkg_list] {
 def gen-one-env [env_name env_desc]: nothing -> record<inputs: list<string>, output: string, extends: list<string>> {
     mut env_inputs = []
     mut env_paths = []
-    for i in ($env_desc.contents? | transpose name pkgs) {
+    for i in ($env_desc.contents? | default [] | transpose name pkgs) {
         $env_inputs = $env_inputs | append $i.name
         $env_paths = $env_paths | append (get-input-pkgs $"imp.($i.name)" $i.pkgs)
     }
